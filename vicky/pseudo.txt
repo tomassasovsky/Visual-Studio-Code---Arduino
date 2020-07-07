@@ -1,0 +1,13 @@
+Procedimiento ejemplo()
+    Dim Variable_01 quesea Entero
+    Dim Variable_02 quesea Entero
+    Dim Resultado quesea Entero
+    Leer Variable_01
+         Variable_02
+    Si Variable_01 <> Variable_02 Entonces
+        Resultado = Variable_01 - Variable_02
+    Siotro
+        Resultado = Variable_01 + Variable_02
+    Fin Si
+    Imprimir Resultado
+Fin Procedimiento

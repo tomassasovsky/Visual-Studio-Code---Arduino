@@ -1,0 +1,18 @@
+Procedimiento ejemplo()
+    Dim Variable_01 quesea Numérico
+    Dim Variable_02 quesea Numérico
+    Dim Resultado quesea Numérico
+    Leer Variable_01
+         Variable_02
+    Si Variable_01 > 0 Entonces
+        Si Variable_01 > Variable_02 and Variable_02 <> 0 Entonces
+            Resultado = Variable_01/Variable_02
+            Imprimir Resultado
+        Siotro
+            Si Variable_01 = 5 or Variable_02 = 1000 Entonces
+                Resultado = (Variable_01^Variable_02)^(1/3)
+                Imprimir Resultado
+            Fin Si
+        Fin Si
+    Fin Si
+Fin Procedimiento

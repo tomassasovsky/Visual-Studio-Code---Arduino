@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "C:\\Users\\Tomas\\OneDrive\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\Keyboard\\src",
+                "C:\\Users\\Tomas\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
+                "C:\\Users\\Tomas\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**"
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": false,
+                "path": [
+                    "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include",
+                    "A:\\Projects\\Arduino\\libraries",
+                    "C:\\ProgramData\\Visual Studio Code - Arduino\\Libraries"
+                ]
+            },
+            "forcedInclude": [
+                "C:\\Users\\Tomas\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\cores\\arduino\\Arduino.h"
+            ],
+            "intelliSenseMode": "msvc-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++14"
+        }
+    ],
+    "version": 4
+}

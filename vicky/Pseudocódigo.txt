@@ -1,0 +1,18 @@
+Procedimiento Ejemplo()
+Dim Variable_01 quesea Entero
+Dim Variable_01 quesea Entero
+Dim Resultado quesea Entero
+Leer Variable_01
+	 Variable_02
+Si Variable_01 > Variable_02 AND Variable_02 <> 0 AND (Variable_01 <> 5 OR Variable_02 <> 1000) Entonces
+Resultado = Variable_01/Variable_02
+Siotro
+Resultado = (Variable_01^Variable_02)^(1/3)
+Fin Si
+Imprimir Resultado
+Fin Procedimiento
+
+<> not equal to
+= equal to
+<= menor o igual que
+>= mayor o igual que
