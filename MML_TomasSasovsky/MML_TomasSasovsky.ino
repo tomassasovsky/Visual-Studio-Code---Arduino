@@ -39,7 +39,7 @@ boolean previousPlay = false;
 
 int selectedTrack = 1;        /* Selected track, to record on it without having to press the individual track.
 Plus, if you record using the RecPlayButton, you will also overdub, unlike pressing the track button, 
-which would only record and then play (no overdubb). */
+which would only record and then play (no overdub). */
 boolean firstRecording = true;
 boolean stopMode = false;
 boolean stopModeUsed = false;

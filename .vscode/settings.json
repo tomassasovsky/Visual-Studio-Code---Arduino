@@ -13,5 +13,19 @@
     "arduino.defaultBaudRate": 115200,
     "files.associations": {
         "limits": "cpp"
+    },
+    "cSpell.words": [
+        "Atmega",
+        "CHSV",
+        "CRGB",
+        "LEDs"
+    ],
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#1A1A1A",
+        "statusBar.noFolderBackground": "#212121",
+        "statusBar.debuggingBackground": "#263238",
+        "activityBar.background": "#212121",
+        "titleBar.activeBackground": "#212121",
+        "titleBar.activeForeground": "#FEFCFE"
     }
 }
