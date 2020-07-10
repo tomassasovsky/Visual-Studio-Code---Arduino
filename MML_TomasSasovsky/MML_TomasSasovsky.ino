@@ -200,9 +200,15 @@ void loop() {
         startLEDs();
         doublePressClear = false;
         time = millis();
-      }
-      
-      if (buttonpress == "Undo"){
+      }if (buttonpress == "Clear" && firstRecording){
+        lastPotVal = potVal;
+        if (potVal/8 > 122) potVal = 1023;
+        if (potVal/8 < 6) potVal = 0;
+        Serial.write(176);  //176 = CC Command
+        Serial.write(1); //2 = Which Control
+        Serial.write(potVal/8); // Value read from potentiometer
+        time = millis();
+      }if (buttonpress == "Undo"){
         sendNote(0x22);
         if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
         if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
@@ -564,8 +570,8 @@ void setLEDs(){
   if (playMode == LOW) LEDs[modeLED] = CRGB(255,0,0);
   if (playMode == HIGH) LEDs[modeLED] = CRGB(0,255,0);
 
-  if (buttonpress == "Clear" && !firstRecording) LEDs[clearLED] = CRGB(0,0,255);
-  else LEDs[clearLED] = CRGB(0,0,0);
+  if (digitalRead(clearButton) == LOW && !firstRecording) LEDs[clearLED] = CRGB(0,0,255);
+  if (digitalRead(clearButton) == HIGH) LEDs[clearLED] = CRGB(0,0,0);
   
   if (Tr1State == "recording" || Tr1State == "overdubbing") LEDs[Tr1LED] = CRGB(255,0,0);
   else if (Tr1State == "playing") LEDs[Tr1LED] = CRGB(0,255,0);
