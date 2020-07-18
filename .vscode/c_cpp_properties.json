@@ -3,7 +3,6 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:\\Users\\Tomas\\OneDrive\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
                 "C:\\Program Files (x86)\\Arduino\\libraries\\Keyboard\\src",
                 "C:\\Users\\Tomas\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
                 "C:\\Users\\Tomas\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**"

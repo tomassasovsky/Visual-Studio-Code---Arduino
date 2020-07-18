@@ -91,26 +91,7 @@ void loop() {
   if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") || firstRecording) canClearTrack = false, canChangeMode = false;
   else canClearTrack = true, canChangeMode = true;
   if (Tr1State == "empty" && Tr2State == "empty" && Tr3State == "empty" && Tr4State == "empty" && !firstRecording){
-    sendNote(0x1F);
-    selectedTrack = 1;
-    firstRecording = true;
-    Serial.write(midichannel);
-    Serial.write(0x2B);
-    Serial.write(0x45);       //medium velocity = Note ON
-    delay(50);
-    lastPotVal = potVal;
-    if (potVal/8 > 122) potVal = 1023;
-    if (potVal/8 < 6) potVal = 0;
-    Serial.write(176);  //176 = CC Command
-    Serial.write(1); //2 = Which Control
-    Serial.write(potVal/8); // Value read from potentiometer
-    playMode = LOW;           //into record mode
-    startLEDs();
-    Tr1PressedInStop = false;
-    Tr2PressedInStop = false;
-    Tr3PressedInStop = false;
-    Tr4PressedInStop = false;
-    ringPosition = 0;
+    reset();
   }
   
   buttonpress = "released";
@@ -174,33 +155,9 @@ void loop() {
           doublePressClear = true;
         }
         time = millis();
-      }else if (buttonpress == "Clear" && doublePressClear){
-        sendNote(0x1F);
-        Tr1State = "empty";
-        Tr2State = "empty";
-        Tr3State = "empty";
-        Tr4State = "empty";
-        Tr1PressedInStop = false;
-        Tr2PressedInStop = false;
-        Tr3PressedInStop = false;
-        Tr4PressedInStop = false;
-        selectedTrack = 1;
-        firstRecording = true;
-        stopModeUsed = false;
-        previousPlay = false;
-        stopMode = false;
-        Serial.write(midichannel);
-        Serial.write(0x2B);
-        Serial.write(0x45);       //medium velocity = Note ON
-        delay(50);
-        Serial.write(176);  //176 = CC Command
-        Serial.write(1); //2 = Which Control
-        Serial.write(potVal/8); // Value read from potentiometer
-        playMode = LOW;           //into record mode
-        startLEDs();
-        doublePressClear = false;
-        time = millis();
-      }if (buttonpress == "Clear" && firstRecording){
+      }else if (buttonpress == "Clear" && doublePressClear) reset();
+      
+      if (buttonpress == "Clear" && firstRecording){
         lastPotVal = potVal;
         if (potVal/8 > 122) potVal = 1023;
         if (potVal/8 < 6) potVal = 0;
@@ -208,16 +165,16 @@ void loop() {
         Serial.write(1); //2 = Which Control
         Serial.write(potVal/8); // Value read from potentiometer
         time = millis();
-      }if (buttonpress == "Undo"){
+      }
+      
+      if (buttonpress == "Undo"){
         sendNote(0x22);
         if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
         if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
         if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
         if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
       }
-      if (buttonpress == "Bank"){
-        sendNote(0x20);
-      }
+      if (buttonpress == "Bank") sendNote(0x20);
       time = millis();
     }
     if (playMode == LOW){           //if the current mode is "Record Mode"
@@ -362,53 +319,11 @@ void loop() {
             if (Tr2State != "empty") Tr2State = "playing";
             if (Tr3State != "empty") Tr3State = "playing";
             if (Tr4State != "empty") Tr4State = "playing";
-          }else if (Tr1PressedInStop && Tr2PressedInStop && Tr3PressedInStop && Tr4PressedInStop) { //1111
-            Tr1State = "playing";
-            Tr2State = "playing";
-            Tr3State = "playing";
-            Tr4State = "playing";
-          }else if (!Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && Tr4PressedInStop) { //0001
-            Tr4State = "playing";
-          }else if (!Tr1PressedInStop && !Tr2PressedInStop && Tr3PressedInStop && !Tr4PressedInStop) { //0010
-            Tr3State = "playing";
-          }else if (!Tr1PressedInStop && !Tr2PressedInStop && Tr3PressedInStop && Tr4PressedInStop) { //0011
-            Tr3State = "playing";
-            Tr4State = "playing";
-          }else if (!Tr1PressedInStop && Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop) { //0100
-            Tr2State = "playing";
-          }else if (!Tr1PressedInStop && Tr2PressedInStop && !Tr3PressedInStop && Tr4PressedInStop) { //0101
-            Tr2State = "playing";
-            Tr4State = "playing";
-          }else if (!Tr1PressedInStop && Tr2PressedInStop && Tr3PressedInStop && !Tr4PressedInStop) { //0110
-            Tr2State = "playing";
-            Tr3State = "playing";
-          }else if (!Tr1PressedInStop && Tr2PressedInStop && Tr3PressedInStop && Tr4PressedInStop) { //0111
-            Tr2State = "playing";
-            Tr3State = "playing";
-            Tr4State = "playing";
-          }else if (Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop) { //1000
-            Tr1State = "playing";          
-          }else if (Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && Tr4PressedInStop) { //1001
-            Tr1State = "playing";
-            Tr4State = "playing";
-          }else if (Tr1PressedInStop && !Tr2PressedInStop && Tr3PressedInStop && !Tr4PressedInStop) { //1010
-            Tr1State = "playing";
-            Tr3State = "playing";
-          }else if (Tr1PressedInStop && !Tr2PressedInStop && Tr3PressedInStop && Tr4PressedInStop) { //1011
-            Tr1State = "playing";
-            Tr3State = "playing";
-            Tr4State = "playing";
-          }else if (Tr1PressedInStop && Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop) { //1100
-            Tr1State = "playing";
-            Tr2State = "playing";
-          }else if (Tr1PressedInStop && Tr2PressedInStop && !Tr3PressedInStop && Tr4PressedInStop) { //1101
-            Tr1State = "playing";
-            Tr2State = "playing";
-            Tr4State = "playing";
-          }else if (Tr1PressedInStop && Tr2PressedInStop && Tr3PressedInStop && !Tr4PressedInStop) { //1110
-            Tr1State = "playing";
-            Tr2State = "playing";
-            Tr3State = "playing";
+          }else {
+            if (Tr1PressedInStop) Tr1State = "playing";
+            if (Tr2PressedInStop) Tr2State = "playing";
+            if (Tr3PressedInStop) Tr3State = "playing";
+            if (Tr4PressedInStop) Tr4State = "playing";
           }
           previousPlay = true;
         }else if (previousPlay && stopModeUsed){
@@ -596,6 +511,34 @@ void setLEDs(){
   else setHue = 96;
   
   FastLED.show();
+}
+void reset(){
+  sendNote(0x1F);
+  Tr1State = "empty";
+  Tr2State = "empty";
+  Tr3State = "empty";
+  Tr4State = "empty";
+  Tr1PressedInStop = false;
+  Tr2PressedInStop = false;
+  Tr3PressedInStop = false;
+  Tr4PressedInStop = false;
+  selectedTrack = 1;
+  firstRecording = true;
+  stopModeUsed = false;
+  previousPlay = false;
+  stopMode = false;
+  Serial.write(midichannel);
+  Serial.write(0x2B);
+  Serial.write(0x45);       //medium velocity = Note ON
+  delay(50);
+  Serial.write(176);  //176 = CC Command
+  Serial.write(1); //2 = Which Control
+  Serial.write(potVal/8); // Value read from potentiometer
+  playMode = LOW;           //into record mode
+  ringPosition = 0;
+  startLEDs();
+  doublePressClear = false;
+  time = millis();
 }
 void startLEDs(){
   for (int i = 0; i < 3; i++){
