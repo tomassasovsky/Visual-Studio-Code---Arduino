@@ -79,20 +79,16 @@ void setup() {
   pinMode(bankButton, INPUT_PULLUP);
   pinMode(potPin, INPUT);
   sendNote(0x1F);
-  Serial.write(midichannel);
-  Serial.write(0x2B);
-  Serial.write(0x45);       //medium velocity = Note ON
+  sendNote(0x2B);
   startLEDs();
   setLEDs();
 }
 
 void loop() {
-  if (Tr1State != "empty" || Tr2State != "empty" || Tr3State != "empty" || Tr4State != "empty") ringLEDs();
+  if ((Tr1State != "empty" || Tr2State != "empty" || Tr3State != "empty" || Tr4State != "empty") && !stopMode) ringLEDs();
   if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") || firstRecording) canClearTrack = false, canChangeMode = false;
   else canClearTrack = true, canChangeMode = true;
-  if (Tr1State == "empty" && Tr2State == "empty" && Tr3State == "empty" && Tr4State == "empty" && !firstRecording){
-    reset();
-  }
+  if (Tr1State == "empty" && Tr2State == "empty" && Tr3State == "empty" && Tr4State == "empty" && !firstRecording) reset();
   
   buttonpress = "released";
   if (digitalRead(recPlayButton) == LOW) buttonpress = "RecPlay", doublePressClear = false;
@@ -111,9 +107,7 @@ void loop() {
       if (buttonpress == "Mode" && canChangeMode){
         if (playMode == LOW){
           playMode = HIGH;           //entering play mode
-          Serial.write(midichannel);
-          Serial.write(0x29);
-          Serial.write(0x45);        //medium velocity = Note ON
+          sendNote(0x29);
           if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";
           if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
           if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
@@ -128,9 +122,7 @@ void loop() {
           doublePressClear = false;
         }else{
           playMode = LOW;            //entering rec mode
-          Serial.write(midichannel);
-          Serial.write(0x2B);
-          Serial.write(0x45);        //medium velocity = Note ON
+          sendNote(0x2B);
           if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";
           if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
           if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
@@ -325,6 +317,7 @@ void loop() {
             if (Tr3PressedInStop) Tr3State = "playing";
             if (Tr4PressedInStop) Tr4State = "playing";
           }
+          ringPosition = 0;
           previousPlay = true;
         }else if (previousPlay && stopModeUsed){
           if (Tr1State != "empty") Tr1State = "playing";
@@ -507,7 +500,7 @@ void setLEDs(){
   if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && firstRecording) setHue = 0;
   else if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && !firstRecording) setHue = 60;
   else if (Tr1State == "overdubbing" || Tr2State == "overdubbing" || Tr3State == "overdubbing" || Tr4State == "overdubbing") setHue = 60;
-  else if ((Tr1State == "muted" || Tr1State == "empty") && (Tr2State == "muted" || Tr2State == "empty") && (Tr3State == "muted" || Tr3State == "empty") && (Tr4State == "muted" || Tr4State == "empty") && !firstRecording) setHue = 160, stopMode = true;  //set the led ring to blue when all tracks are muted
+  else if ((Tr1State == "muted" || Tr1State == "empty") && (Tr2State == "muted" || Tr2State == "empty") && (Tr3State == "muted" || Tr3State == "empty") && (Tr4State == "muted" || Tr4State == "empty") && !firstRecording) stopMode = true;  //set the led ring to blue when all tracks are muted
   else setHue = 96;
   
   FastLED.show();
@@ -527,9 +520,7 @@ void reset(){
   stopModeUsed = false;
   previousPlay = false;
   stopMode = false;
-  Serial.write(midichannel);
-  Serial.write(0x2B);
-  Serial.write(0x45);       //medium velocity = Note ON
+  sendNote(0x2B);
   delay(50);
   Serial.write(176);  //176 = CC Command
   Serial.write(1); //2 = Which Control
