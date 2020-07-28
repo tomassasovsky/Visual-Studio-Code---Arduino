@@ -86,7 +86,7 @@ void setup() {
 
 void loop() {
   if ((Tr1State != "empty" || Tr2State != "empty" || Tr3State != "empty" || Tr4State != "empty") && !stopMode) ringLEDs();
-  if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") || firstRecording) canClearTrack = false, canChangeMode = false;
+  if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") && firstRecording) canClearTrack = false, canChangeMode = false;
   else canClearTrack = true, canChangeMode = true;
   if (Tr1State == "empty" && Tr2State == "empty" && Tr3State == "empty" && Tr4State == "empty" && !firstRecording) reset();
   
