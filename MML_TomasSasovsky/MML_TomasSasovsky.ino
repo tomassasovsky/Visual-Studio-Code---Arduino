@@ -81,7 +81,7 @@ void setup() {
   pinMode(potPin, INPUT); //declaring potentiometer as INPUT
   sendNote(0x1F); //resets the pedal
   sendNote(0x2B); //gets into Record Mode
-  startLEDs(); //animation for the LEDs when the pedal is resetted
+  startLEDs(); //animation for the LEDs when the pedal is reset
   setLEDs(); //matches the LEDs states with the tracks states
 }
 
@@ -543,11 +543,11 @@ void reset(){   //function to reset the pedal
   Serial.write(1); //2 = Which Control
   Serial.write(potVal/8); // Value read from potentiometer
   ringPosition = 0;   //resets the ring position
-  startLEDs();    //animation to show the pedal has been resetted
+  startLEDs();    //animation to show the pedal has been reset
   doublePressClear = false;
   time = millis();
 }
-void startLEDs(){   //animation to show the pedal has been resetted
+void startLEDs(){   //animation to show the pedal has been reset
   for (int i = 0; i < 3; i++){    //turns on and off every led 3 times in red
     LEDs[0] = CRGB(255,0,0);
     LEDs[1] = CRGB(255,0,0);
