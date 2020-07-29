@@ -322,25 +322,25 @@ void loop() {
       if (buttonpress == "RecPlay"){    //if the Rec/Play button is pressed
         sendNote(0x31);   //send the note
         if (stopMode) ringPosition = 0;   //if we are in stop mode, make the ring spin from the position 0
-        if (!stopModeUsed){   
+        if (!stopModeUsed){   //if stop Mode hasn't been used, just play every track that isn't empty: 
           if (Tr1State != "empty") Tr1State = "playing";
           if (Tr2State != "empty") Tr2State = "playing";
           if (Tr3State != "empty") Tr3State = "playing";
           if (Tr4State != "empty") Tr4State = "playing";
-        }else if (!previousPlay && stopModeUsed){
-          if (!Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop) {
+        }else if (!previousPlay && stopModeUsed){   //if stop mode has been used and the previous pressed button isn't RecPlay
+          if (!Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop){   //if none of the tracks has been pressed in stop, play every track that isn't empty: 
             if (Tr1State != "empty") Tr1State = "playing";
             if (Tr2State != "empty") Tr2State = "playing";
             if (Tr3State != "empty") Tr3State = "playing";
             if (Tr4State != "empty") Tr4State = "playing";
-          }else {
+          }else {   //if a track has been pressed and it isn't empty, play it
             if (Tr1PressedInStop) Tr1State = "playing";
             if (Tr2PressedInStop) Tr2State = "playing";
             if (Tr3PressedInStop) Tr3State = "playing";
             if (Tr4PressedInStop) Tr4State = "playing";
           }
           previousPlay = true;
-        }else if (previousPlay && stopModeUsed){
+        }else if (previousPlay && stopModeUsed){    //if the previous pressed button is RecPlay, play every track that is not empty:
           if (Tr1State != "empty") Tr1State = "playing";
           if (Tr2State != "empty") Tr2State = "playing";
           if (Tr3State != "empty") Tr3State = "playing";
@@ -348,136 +348,116 @@ void loop() {
           previousPlay = false;
         }
         stopMode = false;
-        time = millis();
         doublePressClear = false;
+        time = millis();
       }
-      if (stopMode){
-        if (buttonpress == "Track1" && !firstRecording && Tr1State != "empty"){
-          sendNote(0x2C);
-          Tr1PressedInStop = !Tr1PressedInStop;
-          stopModeUsed = true;
-          selectedTrack = 1;
+      if (stopMode){    //if we are in stop mode
+        if (buttonpress == "Track1" && Tr1State != "empty"){   //if the track 1 button is pressed and it isn't empty
+          sendNote(0x2C);   //send the note
+          Tr1PressedInStop = !Tr1PressedInStop;   //toggle between the track being pressed in stop mode and not
+          stopModeUsed = true;    //set the stopModeUsed variable to true
+          selectedTrack = 1;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track2" && !firstRecording && Tr2State != "empty"){
-          sendNote(0x2D);
-          Tr2PressedInStop = !Tr2PressedInStop;
-          stopModeUsed = true;
-          selectedTrack = 2;
+        if (buttonpress == "Track2" && Tr2State != "empty"){   //if the track 2 button is pressed and it isn't empty
+          sendNote(0x2D);   //send the note
+          Tr2PressedInStop = !Tr2PressedInStop;   //toggle between the track being pressed in stop mode and not
+          stopModeUsed = true;    //set the stopModeUsed variable to true
+          selectedTrack = 2;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track3" && !firstRecording && Tr3State != "empty"){
-          sendNote(0x2E);
-          Tr3PressedInStop = !Tr3PressedInStop;
-          selectedTrack = 3;
-          stopModeUsed = true;
+        if (buttonpress == "Track3" && Tr3State != "empty"){   //if the track 3 button is pressed and it isn't empty
+          sendNote(0x2E);   //send the note
+          Tr3PressedInStop = !Tr3PressedInStop;   //toggle between the track being pressed in stop mode and not
+          stopModeUsed = true;    //set the stopModeUsed variable to true
+          selectedTrack = 3;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track4" && !firstRecording && Tr4State != "empty"){
-          sendNote(0x2F);
-          Tr4PressedInStop = !Tr4PressedInStop;
-          selectedTrack = 4;
-          stopModeUsed = true;
+        if (buttonpress == "Track4" && Tr4State != "empty"){   //if the track 4 button is pressed and it isn't empty
+          sendNote(0x2F);   //send the note
+          Tr4PressedInStop = !Tr4PressedInStop;   //toggle between the track being pressed in stop mode and not
+          stopModeUsed = true;    //set the stopModeUsed variable to true
+          selectedTrack = 4;    //select the track
           doublePressClear = false;
           time = millis();
         }
-      }else if (!stopMode){
-        if (buttonpress == "Track1" && !firstRecording && Tr1State != "empty"){
-          sendNote(0x2C);
+      }else if (!stopMode){   //if we aren't in stop mode
+        if (buttonpress == "Track1" && Tr1State != "empty"){    //if the track 1 button is pressed and it isn't empty
+          sendNote(0x2C);   //send the note
+          //toggle between playing and muted when it was pressed in stop mode:
           if (Tr1PressedInStop && Tr1State == "playing") previousPlay = true, Tr1State = "muted";
           else if (Tr1PressedInStop && Tr1State == "muted") previousPlay = true, Tr1State = "playing";
-          else if (!Tr1PressedInStop && Tr1State == "playing"){
-            Tr1State = "muted";
+          else if (!Tr1PressedInStop){   //if it wasn't pressed in stop
+            if (Tr1State == "playing") Tr1State = "muted";    //and it is playing, mute it
+            else if (Tr1State == "muted") Tr1State = "playing";   //else if it is muted, play it
+            //reset everything in stopMode:
             stopModeUsed = false;
             Tr1PressedInStop = false;
             Tr2PressedInStop = false;
             Tr3PressedInStop = false;
             Tr4PressedInStop = false;
           }
-          else if (!Tr1PressedInStop && Tr1State == "muted"){
-            Tr1State = "playing";
-            stopModeUsed = false;
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-          }
-          selectedTrack = 1;
+          selectedTrack = 1;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track2" && !firstRecording && Tr2State != "empty"){
-          sendNote(0x2D);
+        if (buttonpress == "Track2" && !firstRecording && Tr2State != "empty"){    //if the track 2 button is pressed and it isn't empty
+          sendNote(0x2D);   //send the note
+          //toggle between playing and muted when it was pressed in stop mode:
           if (Tr2PressedInStop && Tr2State == "playing") previousPlay = true, Tr2State = "muted";
           else if (Tr2PressedInStop && Tr2State == "muted") previousPlay = true, Tr2State = "playing";
-          else if (!Tr2PressedInStop && Tr2State == "playing"){
-            Tr2State = "muted";
+          else if (!Tr2PressedInStop){   //if it wasn't pressed in stop
+            if (Tr2State == "playing") Tr2State = "muted";    //and it is playing, mute it
+            else if (Tr2State == "muted") Tr2State = "playing";   //else if it is muted, play it
+            //reset everything in stopMode:
             stopModeUsed = false;
             Tr1PressedInStop = false;
             Tr2PressedInStop = false;
             Tr3PressedInStop = false;
             Tr4PressedInStop = false;
           }
-          else if (!Tr2PressedInStop && Tr2State == "muted"){
-            Tr2State = "playing";
-            stopModeUsed = false;
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-          }
-          selectedTrack = 2;
+          selectedTrack = 2;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track3" && !firstRecording && Tr3State != "empty"){
-          sendNote(0x2E);
+        if (buttonpress == "Track3" && !firstRecording && Tr3State != "empty"){    //if the track 3 button is pressed and it isn't empty
+          sendNote(0x2E);   //send the note
+          //toggle between playing and muted when it was pressed in stop mode:
           if (Tr3PressedInStop && Tr3State == "playing") previousPlay = true, Tr3State = "muted";
           else if (Tr3PressedInStop && Tr3State == "muted") previousPlay = true,Tr3State = "playing" ;
-          else if (!Tr3PressedInStop && Tr3State == "playing"){
-            Tr3State = "muted";
+          else if (!Tr3PressedInStop){   //if it wasn't pressed in stop
+            if (Tr3State == "playing") Tr3State = "muted";    //and it is playing, mute it
+            else if (Tr3State == "muted") Tr3State = "playing";   //else if it is muted, play it
+            //reset everything in stopMode:
             stopModeUsed = false;
             Tr1PressedInStop = false;
             Tr2PressedInStop = false;
             Tr3PressedInStop = false;
             Tr4PressedInStop = false;
           }
-          else if (!Tr3PressedInStop && Tr3State == "muted"){
-            Tr3State = "playing";
-            stopModeUsed = false;
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-          }
-          selectedTrack = 3;
+          selectedTrack = 3;    //select the track
           doublePressClear = false;
           time = millis();
         }
-        if (buttonpress == "Track4" && !firstRecording && Tr4State != "empty"){
-          sendNote(0x2F);
+        if (buttonpress == "Track4" && !firstRecording && Tr4State != "empty"){    //if the track 4 button is pressed and it isn't empty
+          sendNote(0x2F);   //send the note
+          //toggle between playing and muted when it was pressed in stop mode:
           if (Tr4PressedInStop && Tr4State == "playing") previousPlay = true, Tr4State = "muted";
           else if (Tr4PressedInStop && Tr4State == "muted") previousPlay = true, Tr4State = "playing";
-          else if (!Tr4PressedInStop && Tr4State == "playing"){
-            Tr4State = "muted";
+          else if (!Tr4PressedInStop){   //if it wasn't pressed in stop
+            if (Tr4State == "playing") Tr4State = "muted";    //and it is playing, mute it
+            else if (Tr4State == "muted") Tr4State = "playing";   //else if it is muted, play it
+            //reset everything in stopMode:
             stopModeUsed = false;
             Tr1PressedInStop = false;
             Tr2PressedInStop = false;
             Tr3PressedInStop = false;
             Tr4PressedInStop = false;
           }
-          else if (!Tr4PressedInStop && Tr4State == "muted"){
-            Tr4State = "playing";
-            stopModeUsed = false;
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-          }
-          selectedTrack = 4;
+          selectedTrack = 4;    //select the track
           doublePressClear = false;
           time = millis();
         }
@@ -491,7 +471,8 @@ void loop() {
   unsigned int diffPot = abs(lastPotVal - potVal);
   
   if (diffPot > 30){// If the value does not = the last value the following command is made. This is because the pot has been turned. Otherwise the pot remains the same and no midi message is output.
-    lastPotVal = potVal;
+    lastPotVal = potVal;    //so that the arduino doesn't send the potentiometer value unless it changes
+    //cleanup of the potentiometer value:
     if (potVal/8 > 123) potVal = 1023;
     if (potVal < 40) potVal = 0;
     Serial.write(176);  //176 = CC Command
@@ -500,69 +481,74 @@ void loop() {
   }
 }
 void sendNote(int pitch){
-  Serial.write(midichannel);
-  Serial.write(pitch);
+  Serial.write(midichannel);    //sends the notes in the selected channel
+  Serial.write(pitch);    //sends note
   Serial.write(0x45);  //medium velocity = Note ON
 }
 void setLEDs(){
-  if (playMode == LOW) LEDs[modeLED] = CRGB(255,0,0);
-  if (playMode == HIGH) LEDs[modeLED] = CRGB(0,255,0);
+  //mode LED:
+  if (playMode == LOW) LEDs[modeLED] = CRGB(255,0,0);   //when we are in Record mode, the LED is red
+  if (playMode == HIGH) LEDs[modeLED] = CRGB(0,255,0);   //when we are in Play mode, the LED is green
 
-  if (digitalRead(clearButton) == LOW && !firstRecording) LEDs[clearLED] = CRGB(0,0,255);
-  if (digitalRead(clearButton) == HIGH) LEDs[clearLED] = CRGB(0,0,0);
+  if (digitalRead(clearButton) == LOW && !firstRecording) LEDs[clearLED] = CRGB(0,0,255);   //turn ON the Clear LED when the button is pressed and the pedal has been used
+  if (digitalRead(clearButton) == HIGH) LEDs[clearLED] = CRGB(0,0,0);   //turn OFF the Clear LED when the button is NOT pressed
   
-  if (Tr1State == "recording" || Tr1State == "overdubbing") LEDs[Tr1LED] = CRGB(255,0,0);
-  else if (Tr1State == "playing") LEDs[Tr1LED] = CRGB(0,255,0);
-  else if (Tr1State == "muted" || Tr1State == "empty") LEDs[Tr1LED] = CRGB(0,0,0);
+  if (Tr1State == "recording" || Tr1State == "overdubbing") LEDs[Tr1LED] = CRGB(255,0,0);   //when track 1 is recording or overdubing, turn on it's LED, colour red
+  else if (Tr1State == "playing") LEDs[Tr1LED] = CRGB(0,255,0);   //when track 1 is playing, turn on it's LED, colour green
+  else if (Tr1State == "muted" || Tr1State == "empty") LEDs[Tr1LED] = CRGB(0,0,0);   //when track 1 is muted or empty, turn off it's LED
   
-  if (Tr2State == "playing") LEDs[Tr2LED] = CRGB(0,255,0);
-  else if (Tr2State == "recording" || Tr2State == "overdubbing") LEDs[Tr2LED] = CRGB(255,0,0);
-  else if (Tr2State == "muted" || Tr2State == "empty") LEDs[Tr2LED] = CRGB(0,0,0);
+  if (Tr2State == "recording" || Tr2State == "overdubbing") LEDs[Tr2LED] = CRGB(255,0,0);   //when track 2 is recording or overdubing, turn on it's LED, colour red
+  else if (Tr2State == "playing") LEDs[Tr2LED] = CRGB(0,255,0);   //when track 2 is playing, turn on it's LED, colour green
+  else if (Tr2State == "muted" || Tr2State == "empty") LEDs[Tr2LED] = CRGB(0,0,0);  //when track 2 is muted or empty, turn off it's LED
   
-  if (Tr3State == "playing") LEDs[Tr3LED] = CRGB(0,255,0);
-  else if (Tr3State == "recording" || Tr3State == "overdubbing") LEDs[Tr3LED] = CRGB(255,0,0);
-  else if (Tr3State == "muted" || Tr3State == "empty") LEDs[Tr3LED] = CRGB(0,0,0);
+  if (Tr3State == "recording" || Tr3State == "overdubbing") LEDs[Tr3LED] = CRGB(255,0,0);   //when track 3 is recording or overdubing, turn on it's LED, colour red
+  else if (Tr3State == "playing") LEDs[Tr3LED] = CRGB(0,255,0);   //when track 3 is playing, turn on it's LED, colour green
+  else if (Tr3State == "muted" || Tr3State == "empty") LEDs[Tr3LED] = CRGB(0,0,0);  //when track 3 is muted or empty, turn off it's LED
   
-  if (Tr4State == "playing") LEDs[Tr4LED] = CRGB(0,255,0);
-  else if (Tr4State == "recording" || Tr4State == "overdubbing") LEDs[Tr4LED] = CRGB(255,0,0);
-  else if (Tr4State == "muted" || Tr4State == "empty") LEDs[Tr4LED] = CRGB(0,0,0);
+  if (Tr4State == "recording" || Tr4State == "overdubbing") LEDs[Tr4LED] = CRGB(255,0,0);   //when track 4 is recording or overdubing, turn on it's LED, colour red
+  else if (Tr4State == "playing") LEDs[Tr4LED] = CRGB(0,255,0);   //when track 4 is playing, turn on it's LED, colour green
+  else if (Tr4State == "muted" || Tr4State == "empty") LEDs[Tr4LED] = CRGB(0,0,0);  //when track 4 is muted or empty, turn off it's LED
 
-  if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && firstRecording) setHue = 0;
-  else if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && !firstRecording) setHue = 60;
-  else if (Tr1State == "overdubbing" || Tr2State == "overdubbing" || Tr3State == "overdubbing" || Tr4State == "overdubbing") setHue = 60;
+  //the setHue variable sets the LED Ring's colour. 0 is red, 60 is yellow(ish), 96 is green.
+  if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && firstRecording) setHue = 0;   //sets the led ring to red (recording)
+  else if ((Tr1State == "recording" || Tr2State == "recording" || Tr3State == "recording" || Tr4State == "recording") && !firstRecording) setHue = 60;    //sets the led ring to yellow (overdubbing)
+  else if (Tr1State == "overdubbing" || Tr2State == "overdubbing" || Tr3State == "overdubbing" || Tr4State == "overdubbing") setHue = 60;   //sets the led ring to yellow (overdubbing)
   else if ((Tr1State == "muted" || Tr1State == "empty") && (Tr2State == "muted" || Tr2State == "empty") && (Tr3State == "muted" || Tr3State == "empty") && (Tr4State == "muted" || Tr4State == "empty") && !firstRecording) stopMode = true;  //stop the spinning ring animation when all tracks are muted
-  else setHue = 96;
+  else setHue = 96;   //sets the led ring to green (playing)
   
-  FastLED.show();
+  FastLED.show();   //updates the led states
 }
-void reset(){
-  sendNote(0x1F);
+void reset(){   //function to reset the pedal
+  sendNote(0x1F);   //sends note that resets Mobius
+  //empties the tracks:
   Tr1State = "empty";
   Tr2State = "empty";
   Tr3State = "empty";
   Tr4State = "empty";
+  //resets the stopMode:
   Tr1PressedInStop = false;
   Tr2PressedInStop = false;
   Tr3PressedInStop = false;
   Tr4PressedInStop = false;
-  selectedTrack = 1;
-  firstRecording = true;
   stopModeUsed = false;
-  previousPlay = false;
   stopMode = false;
-  sendNote(0x2B);
+  selectedTrack = 1;    //selects the 1rst track
+  firstRecording = true;    //sets the variable firstRecording to true
+  previousPlay = false;   
+  sendNote(0x2B);   //sends the Record Mode note
+  playMode = LOW;           //into record mode
   delay(50);
+  //sends potentiometer value:
   Serial.write(176);  //176 = CC Command
   Serial.write(1); //2 = Which Control
   Serial.write(potVal/8); // Value read from potentiometer
-  playMode = LOW;           //into record mode
-  ringPosition = 0;
-  startLEDs();
+  ringPosition = 0;   //resets the ring position
+  startLEDs();    //animation to show the pedal has been resetted
   doublePressClear = false;
   time = millis();
 }
-void startLEDs(){
-  for (int i = 0; i < 3; i++){
+void startLEDs(){   //animation to show the pedal has been resetted
+  for (int i = 0; i < 3; i++){    //turns on and off every led 3 times in red
     LEDs[0] = CRGB(255,0,0);
     LEDs[1] = CRGB(255,0,0);
     LEDs[2] = CRGB(255,0,0);
@@ -606,15 +592,15 @@ void startLEDs(){
     FastLED.show();
     delay(150);
   }
-  setHue = 96;
+  setHue = 96;    //sets the led ring colour to green
 }
-void ringLEDs(){
+void ringLEDs(){    //function that makes the spinning animation for the led ring
   FastLED.setBrightness(255);
   EVERY_N_MILLISECONDS(ringSpeed){ //this gets an entire spin in 3/4 of a second (0.75s) Half a second would be 31.25, a second would be 62.5
     fadeToBlackBy(LEDs, qtyLEDs - nonRingLEDs, 70);  // Dims the LEDs by 64/256 (1/4) and thus sets the trail's length. Also set limit to the ring LEDs quantity and exclude the mode and track ones (qtyLEDs-7)
     LEDs[ringPosition] = CHSV(setHue, 255, 255); // Sets the LED's hue according to the potentiometer rotation    
     ringPosition++; // Shifts all LEDs one step in the currently active direction    
     if (ringPosition == qtyLEDs - nonRingLEDs) ringPosition = 0; // If one end is reached, reset the position to loop around
-    FastLED.show(); // Finally, display all LED's data (= illuminate the LED ring)
+    FastLED.show(); // Finally, display all LED's data (illuminate the LED ring)
   }
 }
