@@ -47,7 +47,7 @@ bool Tr2PressedInStop = false;
 bool Tr3PressedInStop = false;
 bool Tr4PressedInStop = false;
 bool previousPlay = false;    //this variable is for when the stop mode has been used and RecPlay is pressed twice
-
+bool canStopTrack;
 /*
 Selected track, to record on it without having to press the individual track.
 Plus, if you record using the RecPlayButton, you will also overdub, unlike pressing the track button, 
@@ -60,11 +60,8 @@ int firstTrack;
 bool firstRecording = true;
 bool stopMode = false;
 bool stopModeUsed = false;
-bool canClearTrack = false;
-//bool canChangeMode = true;
+bool canClearTrack;
 bool doublePressClear = false;
-
-bool focuslocked = false;
 
 String buttonpress = "";    //To store the button pressed at the time
 String lastbuttonpress = "";    //To store the previous button pressed
@@ -105,13 +102,16 @@ void setup() {
 
 void loop() {
   if ((Tr1State != "empty" || Tr2State != "empty" || Tr3State != "empty" || Tr4State != "empty") && !stopMode) ringLEDs();    //the led ring spins when the pedal is recording, overdubbing or playing.
-  if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") && firstRecording) canClearTrack = false; 
-  else canClearTrack = true;    //you can only clear the selected track and change between modes when you are not recording for the first time.
+  if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") && firstRecording) canStopTrack = false; 
+  else canStopTrack = true;    //you can only clear the selected track and change between modes when you are not recording for the first time.
   //if (firstRecording) canChangeMode = false;
   //else canChangeMode = true;
+  if (firstTrack == 0) canClearTrack = true;
+  else canClearTrack = false;
   if (Tr1State == "empty" && Tr2State == "empty" && Tr3State == "empty" && Tr4State == "empty" && !firstRecording) reset();   //reset the pedal when every track is empty but it has been used (for example, when the only track playing is Tr1 and you clear it, it resets the whole pedal)
   if (Tr1PressedInStop || Tr2PressedInStop || Tr3PressedInStop || Tr4PressedInStop) stopModeUsed = true;
   else stopModeUsed = false;
+  if (digitalRead(clearButton) == HIGH) doublePressClear = false;
 
   if (Tr1State == "recording" && firstRecording) firstTrack = 1;
   if (Tr2State == "recording" && firstRecording) firstTrack = 2;
@@ -135,7 +135,7 @@ void loop() {
 
   if (millis() - time > debounceTime){    //debounce
     if (buttonpress != lastbuttonpress && buttonpress != "released"){    //in any mode
-      if (buttonpress == "Mode"){ //if modeButton is pressed and mode can be changed
+      if (buttonpress == "Mode" && firstTrack == 0){ //if modeButton is pressed and mode can be changed
         if (playMode == LOW){    //if the current mode is Record Mode
           playMode = HIGH;    //enter play mode
           sendNote(0x29);    //send a note so that the pedal knows we've change modes
@@ -168,17 +168,61 @@ void loop() {
         doublePressClear = false;
         previousPlay = false;
       }
-      if (buttonpress == "X2") sendNote(0x20), doublePressClear = false, previousPlay = false, time = millis();;    //not ready yet, only doubles the record time
+      if (buttonpress == "X2") {
+        if((selectedTrack == 1) && ((Tr1State == "playing") || (Tr1State == "empty" && !firstRecording) || (Tr1State == "muted"))) {
+          sendNote(0x20);
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          time = millis();
+        }
+        else if((selectedTrack == 2) && ((Tr2State == "playing") || (Tr2State == "empty" && !firstRecording) || (Tr2State == "muted"))) {
+          sendNote(0x20);
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          time = millis();
+        }
+        else if((selectedTrack == 3) && ((Tr3State == "playing") || (Tr3State == "empty" && !firstRecording) || (Tr3State == "muted"))) {
+          sendNote(0x20);
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          time = millis();
+        }
+        else if((selectedTrack == 4) && ((Tr4State == "playing") || (Tr4State == "empty" && !firstRecording) || (Tr4State == "muted"))) {
+          sendNote(0x20);
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          time = millis();
+        }
+      }
+        
       
       if (playMode == LOW){    //if the current mode is Record Mode
-        if (buttonpress == "Stop" && canClearTrack){    //if Stop is pressed
-          sendNote(0x28);    //send the note
-          //mute the selected track:
-          if (selectedTrack == 1  && Tr1State != "empty") Tr1State = "muted";
-          if (selectedTrack == 2  && Tr2State != "empty") Tr2State = "muted";
-          if (selectedTrack == 3  && Tr3State != "empty") Tr3State = "muted";
-          if (selectedTrack == 4  && Tr4State != "empty") Tr4State = "muted";
-          doublePressClear = false;
+        if (buttonpress == "Stop" && canStopTrack){    //if Stop is pressed
+          if ((selectedTrack == 1 && Tr1State != "overdubbing" && Tr1State != "recording") || (selectedTrack == 2 && (Tr2State != "overdubbing" && Tr2State != "recording")) || (selectedTrack == 3 && Tr3State != "overdubbing" && Tr3State != "recording") || (selectedTrack == 4 && Tr4State != "overdubbing" && Tr4State != "recording")){
+            sendNote(0x28);    //send the note
+            //mute the selected track:
+            if (selectedTrack == 1  && Tr1State != "empty") Tr1State = "muted";
+            if (selectedTrack == 2  && Tr2State != "empty") Tr2State = "muted";
+            if (selectedTrack == 3  && Tr3State != "empty") Tr3State = "muted";
+            if (selectedTrack == 4  && Tr4State != "empty") Tr4State = "muted";
+            doublePressClear = false;
+          }
         } 
         if (buttonpress == "Track1" && (firstTrack == 1 || firstTrack == 0)){    //if the track 1 button is pressed
           sendNote(0x23);    //send the note
@@ -240,8 +284,8 @@ void loop() {
           sendNote(0x27);    //send the note
           if (selectedTrack == 1 && firstRecording){    //if the 1st track is selected and it's the first time recording
             if (Tr1State == "playing" || Tr1State == "empty") Tr1State = "recording";    //if the track is either empty or playing, record
-            else if (Tr1State == "recording") Tr1State = "overdubbing";    //if the track is recording, overdub
-            else if (Tr1State == "overdubbing") Tr1State = "playing", firstRecording = false, selectedTrack = 2;    //if the track is overdubbing, play and select the next track
+            else if (Tr1State == "recording") Tr1State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+            else if (Tr1State == "overdubbing") Tr1State = "playing", selectedTrack = 2;    //if the track is overdubbing, play and select the next track
             else if (Tr1State == "muted") Tr1State = "playing";    //if the track is muted, play it
           }else if (selectedTrack == 1 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
             if (Tr1State == "playing" || Tr1State == "empty"){    //if it's playing or empty, overdub
@@ -256,8 +300,8 @@ void loop() {
           }
           else if (selectedTrack == 2 && firstRecording){    //if the 2nd track is selected and it's the first time recording
             if (Tr2State == "playing" || Tr2State == "empty") Tr2State = "recording";    //if the track is either empty or playing, record
-            else if (Tr2State == "recording") Tr2State = "overdubbing";    //if the track is recording, overdub
-            else if (Tr2State == "overdubbing") Tr2State = "playing", firstRecording = false, selectedTrack = 3;    //if the track is overdubbing, play and select the next track
+            else if (Tr2State == "recording") Tr2State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+            else if (Tr2State == "overdubbing") Tr2State = "playing", selectedTrack = 3;    //if the track is overdubbing, play and select the next track
             else if (Tr2State == "muted") Tr2State = "playing";    //if the track is muted, play it
           }else if (selectedTrack == 2 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
             if (Tr2State == "playing" || Tr2State == "empty"){    //if it's playing or empty, overdub
@@ -272,8 +316,8 @@ void loop() {
           }
           else if (selectedTrack == 3 && firstRecording){    //if the 3rd track is selected and it's the first time recording
             if (Tr3State == "playing" || Tr3State == "empty") Tr3State = "recording";    //if the track is either empty or playing, record
-            else if (Tr3State == "recording") Tr3State = "overdubbing";    //if the track is recording, overdub
-            else if (Tr3State == "overdubbing") Tr3State = "playing", firstRecording = false, selectedTrack = 4;    //if the track is overdubbing, play and select the next track
+            else if (Tr3State == "recording") Tr3State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+            else if (Tr3State == "overdubbing") Tr3State = "playing", selectedTrack = 4;    //if the track is overdubbing, play and select the next track
             else if (Tr3State == "muted") Tr3State = "playing";    //if the track is muted, play it
           }else if (selectedTrack == 3 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
             if (Tr3State == "playing" || Tr3State == "empty"){    //if it's playing or empty, overdub
@@ -485,31 +529,32 @@ void loop() {
     lastbuttonpress = buttonpress;
     setLEDs();
   }
-  if (millis() - time2 > doublePressClearTime){    //debounce
-    if (buttonpress == "Clear" && !doublePressClear && !firstRecording){
-      if (canClearTrack){    //if we can clear the selected track, do it
-        sendNote(0x1E);
-        if(selectedTrack == 1) Tr1State = "empty", Tr1PlayedWRecPlay = false;
-        if(selectedTrack == 2) Tr2State = "empty", Tr2PlayedWRecPlay = false;
-        if(selectedTrack == 3) Tr3State = "empty", Tr3PlayedWRecPlay = false;
-        if(selectedTrack == 4) Tr4State = "empty", Tr4PlayedWRecPlay = false;
-        doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
-        previousPlay = false;
+  if (playMode || !playMode){
+    if (millis() - time2 > doublePressClearTime){    //debounce
+      if (buttonpress == "Clear" && !doublePressClear){
+        if (canClearTrack){    //if we can clear the selected track, do it
+          sendNote(0x1E);
+          if(selectedTrack == 1 && Tr1State == "playing") Tr1State = "empty", Tr1PlayedWRecPlay = false;
+          if(selectedTrack == 2 && Tr2State == "playing") Tr2State = "empty", Tr2PlayedWRecPlay = false;
+          if(selectedTrack == 3 && Tr3State == "playing") Tr3State = "empty", Tr3PlayedWRecPlay = false;
+          if(selectedTrack == 4 && Tr4State == "playing") Tr4State = "empty", Tr4PlayedWRecPlay = false;
+          doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
+          previousPlay = false;
+        } else if (!canClearTrack) reset();
+        time2 = millis();
+      }else if (buttonpress == "Clear" && doublePressClear) reset();    //reset everything when Clear is pressed twice
+      if (buttonpress == "Clear" && firstRecording){    //if nothing is recorded yet, just send the potentiometer (volume) value
+        lastPotVal = potVal;
+        if (potVal/8 > 122) potVal = 1023;    //clear the signal a bit
+        if (potVal/8 < 6) potVal = 0;
+        //send the value:
+        Serial.write(176);    //176 = CC Command
+        Serial.write(1);    //1 = Which Control
+        Serial.write(potVal/8);    // Value read from potentiometer
+        time2 = millis();
       }
-      time2 = millis();
-    }else if (buttonpress == "Clear" && doublePressClear && !firstRecording) reset();    //reset everything when Clear is pressed twice
-    if (buttonpress == "Clear" && firstRecording){    //if nothing is recorded yet, just send the potentiometer (volume) value
-      lastPotVal = potVal;
-      if (potVal/8 > 122) potVal = 1023;    //clear the signal a bit
-      if (potVal/8 < 6) potVal = 0;
-      //send the value:
-      Serial.write(176);    //176 = CC Command
-      Serial.write(1);    //1 = Which Control
-      Serial.write(potVal/8);    // Value read from potentiometer
-      time2 = millis();
     }
   }
-
   potVal = analogRead(potPin);    //Divide by 8 to get range of 0-127 for midi
   unsigned int diffPot = abs(lastPotVal - potVal);
   
@@ -535,10 +580,22 @@ void setLEDs(){
   if (playMode == LOW) LEDs[modeLED] = CRGB(255,0,0);    //when we are in Record mode, the LED is red
   if (playMode == HIGH) LEDs[modeLED] = CRGB(0,255,0);    //when we are in Play mode, the LED is green
 
-  if (digitalRead(clearButton) == LOW && !firstRecording) LEDs[clearLED] = CRGB(0,0,255);    //turn ON the Clear LED when the button is pressed and the pedal has been used
+  if (digitalRead(clearButton) == LOW){    //turn ON the Clear LED when the button is pressed and the pedal has been used
+    if(!firstRecording){
+      if(selectedTrack == 1 && Tr1State == "playing") LEDs[clearLED] = CRGB(0,0,255);
+      else if(selectedTrack == 1 && Tr1State != "playing" && Tr1State != "empty") LEDs[clearLED] = CRGB(255,0,0);
+      if(selectedTrack == 2 && Tr2State == "playing") LEDs[clearLED] = CRGB(0,0,255);
+      else if(selectedTrack == 2 && Tr2State != "playing" && Tr2State != "empty") LEDs[clearLED] = CRGB(255,0,0);
+      if(selectedTrack == 3 && Tr3State == "playing") LEDs[clearLED] = CRGB(0,0,255);
+      else if(selectedTrack == 3 && Tr3State != "playing" && Tr3State != "empty") LEDs[clearLED] = CRGB(255,0,0);
+      if(selectedTrack == 4 && Tr4State == "playing") LEDs[clearLED] = CRGB(0,0,255);
+      else if(selectedTrack == 4 && Tr4State != "playing" && Tr4State != "empty") LEDs[clearLED] = CRGB(255,0,0);
+    }else LEDs[clearLED] = CRGB(255,0,0);
+  }
   if (digitalRead(clearButton) == HIGH) LEDs[clearLED] = CRGB(0,0,0);    //turn OFF the Clear LED when the button is NOT pressed
   
   if (digitalRead(X2Button) == LOW && !firstRecording) LEDs[X2LED] = CRGB(0,0,255);    //turn ON the X2 LED when the button is pressed and the pedal has been used
+  else if (digitalRead(X2Button) == LOW && firstRecording) LEDs[X2LED] = CRGB(255,0,0);
   if (digitalRead(X2Button) == HIGH) LEDs[X2LED] = CRGB(0,0,0);    //turn OFF the X2 LED when the button is NOT pressed
 
   if (Tr1State == "recording" || Tr1State == "overdubbing") LEDs[Tr1LED] = CRGB(255,0,0);    //when track 1 is recording or overdubing, turn on it's LED, colour red
