@@ -1,3 +1,9 @@
+// TODO Change the potentiometer for a rotary encoder
+// TODO: Add variables for the potentiometer value for each track
+// TODO: Configure the encoder switch to toggle between tracks (select the next track)
+// TODO: Add message confirmation for MIDI signals with the MIDI Read function (MIDI Library)
+//! TODO: Finish fixing the FocusLock bugs
+
 #include <FastLED.h>    //library for controlling the LEDs
 
 #define pinLEDs 2
@@ -21,6 +27,11 @@ CRGB LEDs[qtyLEDs];
 
 unsigned int potVal = 0;    //current pot value
 unsigned int lastPotVal = 0;    //previous pot value
+
+unsigned int volTr1 = 0;
+unsigned int volTr2 = 0;
+unsigned int volTr3 = 0;
+unsigned int volTr4 = 0;
 
 bool playMode = LOW;    //LOW = Rec mode, HIGH = Play Mode
 long time = 0;    //the last time the output pin was toggled
@@ -80,8 +91,8 @@ int setHue = 96;    //yellow is 35/50 = 45, red is 0, green is 96
 #define ringSpeed  54.6875    //46.875 62.5
 
 void setup() {
-  Serial.begin(38400);    //to use LoopMIDI and Hairless MIDI Serial
-  //Serial.begin(31250);    //to use only the Arduino UNO (Atmega16u2). You must upload another bootloader to use it as a native MIDI-USB device.
+  //Serial.begin(38400);    //to use LoopMIDI and Hairless MIDI Serial
+  Serial.begin(31250);    //to use only the Arduino UNO (Atmega16u2). You must upload another bootloader to use it as a native MIDI-USB device.
   FastLED.addLeds<typeOfLEDs, pinLEDs, GRB>(LEDs, qtyLEDs);    //declare LEDs
   pinMode(recPlayButton, INPUT_PULLUP);    //declare buttons as INPUT_PULLUP
   pinMode(stopButton, INPUT_PULLUP);
@@ -174,9 +185,13 @@ void loop() {
           doublePressClear = false;
           previousPlay = false;
           if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
           if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
           if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
           if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
           time = millis();
         }
         else if((selectedTrack == 2) && ((Tr2State == "playing") || (Tr2State == "empty" && !firstRecording) || (Tr2State == "muted"))) {
@@ -184,9 +199,13 @@ void loop() {
           doublePressClear = false;
           previousPlay = false;
           if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
           if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
           if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
           if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
           time = millis();
         }
         else if((selectedTrack == 3) && ((Tr3State == "playing") || (Tr3State == "empty" && !firstRecording) || (Tr3State == "muted"))) {
@@ -194,9 +213,13 @@ void loop() {
           doublePressClear = false;
           previousPlay = false;
           if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
           if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
           if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
           if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
           time = millis();
         }
         else if((selectedTrack == 4) && ((Tr4State == "playing") || (Tr4State == "empty" && !firstRecording) || (Tr4State == "muted"))) {
@@ -204,9 +227,13 @@ void loop() {
           doublePressClear = false;
           previousPlay = false;
           if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
           if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
           if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
           if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
           time = millis();
         }
       }
@@ -564,7 +591,8 @@ void loop() {
     if (potVal/8 > 123) potVal = 1023;
     if (potVal < 40) potVal = 0;
     Serial.write(176);    //176 = CC Command
-    Serial.write(1);    //2 = Which Control
+    if (selectedTrack != 4)Serial.write(1);    //1 = Which Control
+    else Serial.write(2);
     Serial.write(potVal/8);    //Value read from potentiometer
   }
 }
