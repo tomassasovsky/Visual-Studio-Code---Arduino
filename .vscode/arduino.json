@@ -2,5 +2,5 @@
     "board": "arduino:avr:uno",
     "port": "COM7",
     "programmer": "AVRISP mkII",
-    "sketch": "MML_TomasSasovsky/Rotory Encoder Tryout/main.ino"
+    "sketch": "MML_TomasSasovsky/MML_TomasSasovsky.ino"
 }

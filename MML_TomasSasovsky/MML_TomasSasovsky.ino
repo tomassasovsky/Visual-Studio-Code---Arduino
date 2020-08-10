@@ -33,6 +33,8 @@ unsigned int volTr2 = 0;
 unsigned int volTr3 = 0;
 unsigned int volTr4 = 0;
 
+bool readMIDIreturn;
+
 bool playMode = LOW;    //LOW = Rec mode, HIGH = Play Mode
 long time = 0;    //the last time the output pin was toggled
 long time2 = 0;
@@ -148,231 +150,269 @@ void loop() {
     if (buttonpress != lastbuttonpress && buttonpress != "released"){    //in any mode
       if (buttonpress == "Mode" && firstTrack == 0){ //if modeButton is pressed and mode can be changed
         if (playMode == LOW){    //if the current mode is Record Mode
-          playMode = HIGH;    //enter play mode
           sendNote(0x29);    //send a note so that the pedal knows we've change modes
+          //if(readMIDI(29)) {
+            playMode = HIGH;    //enter play mode
+            //if any of the tracks is recording when pressing the button, play them:
+            if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
+            if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
+            if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
+            if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
+            // reset the focuslock function:
+            Tr1PressedInStop = false;
+            Tr2PressedInStop = false;
+            Tr3PressedInStop = false;
+            Tr4PressedInStop = false;
+            stopModeUsed = false;
+            previousPlay = false;
+            stopMode = false;
+            doublePressClear = false;
+          //}
         }else{
-          playMode = LOW;    //entering rec mode
           sendNote(0x2B);
+          //if(readMIDI(29)) {
+            playMode = LOW;    //entering rec mode
+            //if any of the tracks is recording when pressing the button, play them:
+            if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
+            if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
+            if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
+            if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
+            // reset the focuslock function:
+            Tr1PressedInStop = false;
+            Tr2PressedInStop = false;
+            Tr3PressedInStop = false;
+            Tr4PressedInStop = false;
+            stopModeUsed = false;
+            previousPlay = false;
+            stopMode = false;
+            doublePressClear = false;
+          //}
         }
-        //if any of the tracks is recording when pressing the button, play them:
-        if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
-        if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
-        if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
-        if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
-        // reset the focuslock function:
-        Tr1PressedInStop = false;
-        Tr2PressedInStop = false;
-        Tr3PressedInStop = false;
-        Tr4PressedInStop = false;
-        stopModeUsed = false;
-        previousPlay = false;
-        stopMode = false;
-        doublePressClear = false;
         time = millis();
       }
       if (buttonpress == "Undo"){    //if the Undo button is pressed
         sendNote(0x22);    //send a note that undoes the last thing it did
-        if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";    //play a track if it is being recorded
-        if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-        if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-        if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-        doublePressClear = false;
-        previousPlay = false;
+        //if (readMIDI(29)){
+          if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";    //play a track if it is being recorded
+          if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+          if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+          if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+          doublePressClear = false;
+          previousPlay = false;
+        //}
+        time = millis();
       }
       if (buttonpress == "X2") {
         if((selectedTrack == 1) && ((Tr1State == "playing") || (Tr1State == "empty" && !firstRecording) || (Tr1State == "muted"))) {
           sendNote(0x20);
-          doublePressClear = false;
-          previousPlay = false;
-          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-          else if (Tr1State == "muted") Tr1State = "playing";
-          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-          else if (Tr2State == "muted") Tr2State = "playing";
-          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-          else if (Tr3State == "muted") Tr3State = "playing";
-          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-          else if (Tr4State == "muted") Tr4State = "playing";
-          time = millis();
+          //if(readMIDI(29)) {
+            doublePressClear = false;
+            previousPlay = false;
+            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+            else if (Tr1State == "muted") Tr1State = "playing";
+            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+            else if (Tr2State == "muted") Tr2State = "playing";
+            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+            else if (Tr3State == "muted") Tr3State = "playing";
+            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+            else if (Tr4State == "muted") Tr4State = "playing";
+          //}
         }
         else if((selectedTrack == 2) && ((Tr2State == "playing") || (Tr2State == "empty" && !firstRecording) || (Tr2State == "muted"))) {
           sendNote(0x20);
-          doublePressClear = false;
-          previousPlay = false;
-          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-          else if (Tr1State == "muted") Tr1State = "playing";
-          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-          else if (Tr2State == "muted") Tr2State = "playing";
-          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-          else if (Tr3State == "muted") Tr3State = "playing";
-          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-          else if (Tr4State == "muted") Tr4State = "playing";
-          time = millis();
+          //if(readMIDI(29)) {
+            doublePressClear = false;
+            previousPlay = false;
+            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+            else if (Tr1State == "muted") Tr1State = "playing";
+            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+            else if (Tr2State == "muted") Tr2State = "playing";
+            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+            else if (Tr3State == "muted") Tr3State = "playing";
+            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+            else if (Tr4State == "muted") Tr4State = "playing";
+          //}
         }
         else if((selectedTrack == 3) && ((Tr3State == "playing") || (Tr3State == "empty" && !firstRecording) || (Tr3State == "muted"))) {
           sendNote(0x20);
-          doublePressClear = false;
-          previousPlay = false;
-          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-          else if (Tr1State == "muted") Tr1State = "playing";
-          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-          else if (Tr2State == "muted") Tr2State = "playing";
-          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-          else if (Tr3State == "muted") Tr3State = "playing";
-          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-          else if (Tr4State == "muted") Tr4State = "playing";
-          time = millis();
+          //if(readMIDI(29)) {
+            doublePressClear = false;
+            previousPlay = false;
+            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+            else if (Tr1State == "muted") Tr1State = "playing";
+            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+            else if (Tr2State == "muted") Tr2State = "playing";
+            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+            else if (Tr3State == "muted") Tr3State = "playing";
+            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+            else if (Tr4State == "muted") Tr4State = "playing";
+          //}
         }
         else if((selectedTrack == 4) && ((Tr4State == "playing") || (Tr4State == "empty" && !firstRecording) || (Tr4State == "muted"))) {
           sendNote(0x20);
-          doublePressClear = false;
-          previousPlay = false;
-          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-          else if (Tr1State == "muted") Tr1State = "playing";
-          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-          else if (Tr2State == "muted") Tr2State = "playing";
-          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-          else if (Tr3State == "muted") Tr3State = "playing";
-          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-          else if (Tr4State == "muted") Tr4State = "playing";
-          time = millis();
+          //if(readMIDI(29)) {
+            doublePressClear = false;
+            previousPlay = false;
+            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+            else if (Tr1State == "muted") Tr1State = "playing";
+            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+            else if (Tr2State == "muted") Tr2State = "playing";
+            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+            else if (Tr3State == "muted") Tr3State = "playing";
+            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+            else if (Tr4State == "muted") Tr4State = "playing";
+          //}  
         }
+        time = millis();
       }
-        
       
       if (playMode == LOW){    //if the current mode is Record Mode
         if (buttonpress == "Stop" && canStopTrack){    //if Stop is pressed
           if ((selectedTrack == 1 && Tr1State != "overdubbing" && Tr1State != "recording") || (selectedTrack == 2 && (Tr2State != "overdubbing" && Tr2State != "recording")) || (selectedTrack == 3 && Tr3State != "overdubbing" && Tr3State != "recording") || (selectedTrack == 4 && Tr4State != "overdubbing" && Tr4State != "recording")){
             sendNote(0x28);    //send the note
+            //if(readMIDI(29)) {
             //mute the selected track:
-            if (selectedTrack == 1  && Tr1State != "empty") Tr1State = "muted";
-            if (selectedTrack == 2  && Tr2State != "empty") Tr2State = "muted";
-            if (selectedTrack == 3  && Tr3State != "empty") Tr3State = "muted";
-            if (selectedTrack == 4  && Tr4State != "empty") Tr4State = "muted";
-            doublePressClear = false;
+              if (selectedTrack == 1  && Tr1State != "empty") Tr1State = "muted";
+              if (selectedTrack == 2  && Tr2State != "empty") Tr2State = "muted";
+              if (selectedTrack == 3  && Tr3State != "empty") Tr3State = "muted";
+              if (selectedTrack == 4  && Tr4State != "empty") Tr4State = "muted";
+              doublePressClear = false;
+            //}
           }
-        } 
+          time = millis();
+        }
         if (buttonpress == "Track1" && (firstTrack == 1 || firstTrack == 0)){    //if the track 1 button is pressed
           sendNote(0x23);    //send the note
-          if (Tr1State == "playing" || Tr1State == "empty" || Tr1State == "muted"){    //if it's playing, empty or muted, record it
-            Tr1State = "recording";
-            //if another track is being recorded, stop and play it:
-            if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing"; 
-            if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-            if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-          }else if (Tr1State == "overdubbing") Tr1State = "playing", firstRecording = false;    //if the track is overdubbing, play it
-          else if (Tr1State == "recording") Tr1State = "playing", firstRecording = false;    //if the track is recording, play it
-          selectedTrack = 1;    //select the track 1
-          doublePressClear = false;
+          //if(readMIDI(29)) {
+            if (Tr1State == "playing" || Tr1State == "empty" || Tr1State == "muted"){    //if it's playing, empty or muted, record it
+              Tr1State = "recording";
+              //if another track is being recorded, stop and play it:
+              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing"; 
+              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+            }else if (Tr1State == "overdubbing") Tr1State = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            else if (Tr1State == "recording") Tr1State = "playing", firstRecording = false;    //if the track is recording, play it
+            selectedTrack = 1;    //select the track 1
+            doublePressClear = false;
+          //}
           time = millis();
         }
         if (buttonpress == "Track2" && (firstTrack == 2 || firstTrack == 0)){    //if the track 2 button is pressed
           sendNote(0x24);    //send the note
-          if (Tr2State == "playing" || Tr2State == "empty" || Tr2State == "muted"){    //if it's playing, empty or muted, record it
-            Tr2State = "recording";
-            //if another track is being recorded, stop and play it:
-            if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-            if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-            if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-          }else if (Tr2State == "overdubbing") Tr2State = "playing", firstRecording = false;    //if the track is overdubbing, play it
-          else if (Tr2State == "recording") Tr2State = "playing", firstRecording = false;    //if the track is recording, play it
-          selectedTrack = 2;    //select the track 2
-          doublePressClear = false;
+          //if(readMIDI(29)) {
+            if (Tr2State == "playing" || Tr2State == "empty" || Tr2State == "muted"){    //if it's playing, empty or muted, record it
+              Tr2State = "recording";
+              //if another track is being recorded, stop and play it:
+              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+            }else if (Tr2State == "overdubbing") Tr2State = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            else if (Tr2State == "recording") Tr2State = "playing", firstRecording = false;    //if the track is recording, play it
+            selectedTrack = 2;    //select the track 2
+            doublePressClear = false;
+          //}
           time = millis();
         }
         if (buttonpress == "Track3" && (firstTrack == 3 || firstTrack == 0)){    //if the track 3 button is pressed
           sendNote(0x25);    //send the note
-          if (Tr3State == "playing" || Tr3State == "empty" || Tr3State == "muted"){    //if it's playing, empty or muted, record it
-            Tr3State = "recording";
-            //if another track is being recorded, stop and play it:
-            if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-            if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-            if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-          }else if (Tr3State == "overdubbing") Tr3State = "playing", firstRecording = false;    //if the track is overdubbing, play it
-          else if (Tr3State == "recording") Tr3State = "playing", firstRecording = false;    //if the track is recording, play it
-          selectedTrack = 3;    //select the track 3
-          doublePressClear = false;
+         // if(readMIDI(29)) {
+            if (Tr3State == "playing" || Tr3State == "empty" || Tr3State == "muted"){    //if it's playing, empty or muted, record it
+              Tr3State = "recording";
+              //if another track is being recorded, stop and play it:
+              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+            }else if (Tr3State == "overdubbing") Tr3State = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            else if (Tr3State == "recording") Tr3State = "playing", firstRecording = false;    //if the track is recording, play it
+            selectedTrack = 3;    //select the track 3
+            doublePressClear = false;
+          //}
           time = millis();
         }
         if (buttonpress == "Track4" && (firstTrack == 4 || firstTrack == 0)){    //if the track 4 button is pressed
           sendNote(0x26);    //send the note
-          if (Tr4State == "playing" || Tr4State == "empty" || Tr4State == "muted"){    //if it's playing, empty or muted, record it
-            Tr4State = "recording";
-            //if another track is being recorded, stop and play it:
-            if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-            if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-            if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-          }else if (Tr4State == "overdubbing") Tr4State = "playing", firstRecording = false;    //if the track is overdubbing, play it
-          else if (Tr4State == "recording") Tr4State = "playing", firstRecording = false;    //if the track is recording, play it
-          selectedTrack = 4;    //select the track 4
-          doublePressClear = false;
+          //if(readMIDI(29)) {
+            if (Tr4State == "playing" || Tr4State == "empty" || Tr4State == "muted"){    //if it's playing, empty or muted, record it
+              Tr4State = "recording";
+              //if another track is being recorded, stop and play it:
+              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+            }else if (Tr4State == "overdubbing") Tr4State = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            else if (Tr4State == "recording") Tr4State = "playing", firstRecording = false;    //if the track is recording, play it
+            selectedTrack = 4;    //select the track 4
+            doublePressClear = false;
+          //}
           time = millis();
         }
         if (buttonpress == "RecPlay"){    //if the Rec/Play button is pressed
           sendNote(0x27);    //send the note
-          if (selectedTrack == 1 && firstRecording){    //if the 1st track is selected and it's the first time recording
-            if (Tr1State == "playing" || Tr1State == "empty") Tr1State = "recording";    //if the track is either empty or playing, record
-            else if (Tr1State == "recording") Tr1State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-            else if (Tr1State == "overdubbing") Tr1State = "playing", selectedTrack = 2;    //if the track is overdubbing, play and select the next track
-            else if (Tr1State == "muted") Tr1State = "playing";    //if the track is muted, play it
-          }else if (selectedTrack == 1 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
-            if (Tr1State == "playing" || Tr1State == "empty"){    //if it's playing or empty, overdub
-              Tr1State = "overdubbing";
-              //if another track is being recorded, stop recording and play it:
-              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-            }else if (Tr1State == "recording") Tr1State = "playing", selectedTrack = 2;    //if the track is recording, play it and select the next track
-            else if (Tr1State == "overdubbing")  Tr1State = "playing", selectedTrack = 2;    //if the track is overdubbing, play and select the next track
-            else if (Tr1State == "muted") Tr1State = "recording";    //if the track is muted, record
-          }
-          else if (selectedTrack == 2 && firstRecording){    //if the 2nd track is selected and it's the first time recording
-            if (Tr2State == "playing" || Tr2State == "empty") Tr2State = "recording";    //if the track is either empty or playing, record
-            else if (Tr2State == "recording") Tr2State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-            else if (Tr2State == "overdubbing") Tr2State = "playing", selectedTrack = 3;    //if the track is overdubbing, play and select the next track
-            else if (Tr2State == "muted") Tr2State = "playing";    //if the track is muted, play it
-          }else if (selectedTrack == 2 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
-            if (Tr2State == "playing" || Tr2State == "empty"){    //if it's playing or empty, overdub
-              Tr2State = "overdubbing";
-              //if another track is being recorded, stop recording and play it:
-              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-            }else if (Tr2State == "recording") Tr2State = "playing", selectedTrack = 3;    //if the track is recording, play it and select the next track
-            else if (Tr2State == "overdubbing") Tr2State = "playing", selectedTrack = 3;    //if the track is overdubbing, play and select the next track
-            else if (Tr2State == "muted") Tr2State = "recording";    //if the track is muted, record
-          }
-          else if (selectedTrack == 3 && firstRecording){    //if the 3rd track is selected and it's the first time recording
-            if (Tr3State == "playing" || Tr3State == "empty") Tr3State = "recording";    //if the track is either empty or playing, record
-            else if (Tr3State == "recording") Tr3State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-            else if (Tr3State == "overdubbing") Tr3State = "playing", selectedTrack = 4;    //if the track is overdubbing, play and select the next track
-            else if (Tr3State == "muted") Tr3State = "playing";    //if the track is muted, play it
-          }else if (selectedTrack == 3 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
-            if (Tr3State == "playing" || Tr3State == "empty"){    //if it's playing or empty, overdub
-              Tr3State = "overdubbing";
-              //if another track is being recorded, stop recording and play it:
-              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-              if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
-            }else if (Tr3State == "recording") Tr3State = "playing", selectedTrack = 4;    //if the track is recording, play it and select the next track
-            else if (Tr3State == "overdubbing") Tr3State = "playing", selectedTrack = 4;    //if the track is overdubbing, play and select the next track
-            else if (Tr3State == "muted") Tr3State = "recording";    //if the track is muted, record
-          }
-          else if (selectedTrack == 4 && firstRecording){    //if the 4th track is selected and it's the first time recording
-            if (Tr4State == "playing" || Tr4State == "empty") Tr4State = "recording";    //if the track is either empty or playing, record
-            else if (Tr4State == "recording") Tr4State = "overdubbing";    //if the track is recording, overdub
-            else if (Tr4State == "overdubbing") Tr4State = "playing", selectedTrack = 1, firstRecording = false;    //if the track is overdubbing, play and select the next track
-            else if (Tr4State == "muted") Tr4State = "playing";    //if the track is muted, play it
-          }else if (selectedTrack == 4 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
-            if (Tr4State == "playing" || Tr4State == "empty"){    //if it's playing or empty, overdub
-              Tr4State = "overdubbing";
-              //if another track is being recorded, stop recording and play it:
-              if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
-              if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
-              if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
-            }else if (Tr4State == "recording") Tr4State = "playing", selectedTrack = 1;    //if the track is recording, play it and select the first track
-            else if (Tr4State == "overdubbing") Tr4State = "playing", selectedTrack = 1;    //if the track is overdubbing, play and select the first track
-            else if (Tr4State == "muted") Tr4State = "recording";    //if the track is muted, record
-          }
+          //if(readMIDI(29)) {
+            if (selectedTrack == 1 && firstRecording){    //if the 1st track is selected and it's the first time recording
+              if (Tr1State == "playing" || Tr1State == "empty") Tr1State = "recording";    //if the track is either empty or playing, record
+              else if (Tr1State == "recording") Tr1State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+              else if (Tr1State == "overdubbing") Tr1State = "playing", selectedTrack = 2;    //if the track is overdubbing, play and select the next track
+              else if (Tr1State == "muted") Tr1State = "playing";    //if the track is muted, play it
+            }else if (selectedTrack == 1 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
+              if (Tr1State == "playing" || Tr1State == "empty"){    //if it's playing or empty, overdub
+                Tr1State = "overdubbing";
+                //if another track is being recorded, stop recording and play it:
+                if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+                if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+                if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+              }else if (Tr1State == "recording") Tr1State = "playing", selectedTrack = 2;    //if the track is recording, play it and select the next track
+              else if (Tr1State == "overdubbing")  Tr1State = "playing", selectedTrack = 2;    //if the track is overdubbing, play and select the next track
+              else if (Tr1State == "muted") Tr1State = "recording";    //if the track is muted, record
+            }
+            else if (selectedTrack == 2 && firstRecording){    //if the 2nd track is selected and it's the first time recording
+              if (Tr2State == "playing" || Tr2State == "empty") Tr2State = "recording";    //if the track is either empty or playing, record
+              else if (Tr2State == "recording") Tr2State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+              else if (Tr2State == "overdubbing") Tr2State = "playing", selectedTrack = 3;    //if the track is overdubbing, play and select the next track
+              else if (Tr2State == "muted") Tr2State = "playing";    //if the track is muted, play it
+            }else if (selectedTrack == 2 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
+              if (Tr2State == "playing" || Tr2State == "empty"){    //if it's playing or empty, overdub
+                Tr2State = "overdubbing";
+                //if another track is being recorded, stop recording and play it:
+                if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+                if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+                if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+              }else if (Tr2State == "recording") Tr2State = "playing", selectedTrack = 3;    //if the track is recording, play it and select the next track
+              else if (Tr2State == "overdubbing") Tr2State = "playing", selectedTrack = 3;    //if the track is overdubbing, play and select the next track
+              else if (Tr2State == "muted") Tr2State = "recording";    //if the track is muted, record
+            }
+            else if (selectedTrack == 3 && firstRecording){    //if the 3rd track is selected and it's the first time recording
+              if (Tr3State == "playing" || Tr3State == "empty") Tr3State = "recording";    //if the track is either empty or playing, record
+              else if (Tr3State == "recording") Tr3State = "overdubbing", firstRecording = false;    //if the track is recording, overdub
+              else if (Tr3State == "overdubbing") Tr3State = "playing", selectedTrack = 4;    //if the track is overdubbing, play and select the next track
+              else if (Tr3State == "muted") Tr3State = "playing";    //if the track is muted, play it
+            }else if (selectedTrack == 3 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
+              if (Tr3State == "playing" || Tr3State == "empty"){    //if it's playing or empty, overdub
+                Tr3State = "overdubbing";
+                //if another track is being recorded, stop recording and play it:
+                if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+                if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+                if (Tr4State == "recording" || Tr4State == "overdubbing") Tr4State = "playing";
+              }else if (Tr3State == "recording") Tr3State = "playing", selectedTrack = 4;    //if the track is recording, play it and select the next track
+              else if (Tr3State == "overdubbing") Tr3State = "playing", selectedTrack = 4;    //if the track is overdubbing, play and select the next track
+              else if (Tr3State == "muted") Tr3State = "recording";    //if the track is muted, record
+            }
+            else if (selectedTrack == 4 && firstRecording){    //if the 4th track is selected and it's the first time recording
+              if (Tr4State == "playing" || Tr4State == "empty") Tr4State = "recording";    //if the track is either empty or playing, record
+              else if (Tr4State == "recording") Tr4State = "overdubbing";    //if the track is recording, overdub
+              else if (Tr4State == "overdubbing") Tr4State = "playing", selectedTrack = 1, firstRecording = false;    //if the track is overdubbing, play and select the next track
+              else if (Tr4State == "muted") Tr4State = "playing";    //if the track is muted, play it
+            }else if (selectedTrack == 4 && !firstRecording){    //if the 1st track is selected and it's NOT the first time recording
+              if (Tr4State == "playing" || Tr4State == "empty"){    //if it's playing or empty, overdub
+                Tr4State = "overdubbing";
+                //if another track is being recorded, stop recording and play it:
+                if (Tr1State == "recording" || Tr1State == "overdubbing") Tr1State = "playing";
+                if (Tr2State == "recording" || Tr2State == "overdubbing") Tr2State = "playing";
+                if (Tr3State == "recording" || Tr3State == "overdubbing") Tr3State = "playing";
+              }else if (Tr4State == "recording") Tr4State = "playing", selectedTrack = 1;    //if the track is recording, play it and select the first track
+              else if (Tr4State == "overdubbing") Tr4State = "playing", selectedTrack = 1;    //if the track is overdubbing, play and select the first track
+              else if (Tr4State == "muted") Tr4State = "recording";    //if the track is muted, record
+            }
+          //}
           time = millis();
           doublePressClear = false;
         }
@@ -380,172 +420,192 @@ void loop() {
       if (playMode == HIGH){    //if the current mode is Play Mode
         if (buttonpress == "Stop"){    //if the Stop button is pressed
           sendNote(0x2A);    //send the note
-          //mute the tracks if they aren't empty
-          if (Tr1State != "empty") Tr1State = "muted";
-          if (Tr2State != "empty") Tr2State = "muted";
-          if (Tr3State != "empty") Tr3State = "muted";
-          if (Tr4State != "empty") Tr4State = "muted";
-          Tr1PlayedWRecPlay = false;
-          Tr2PlayedWRecPlay = false;
-          Tr3PlayedWRecPlay = false;
-          Tr4PlayedWRecPlay = false;
-          stopMode = true;    //make the stopMode variable and mode true
-          previousPlay = false;
-          doublePressClear = false;
+          //if(readMIDI(29)) {
+            //mute the tracks if they aren't empty
+            if (Tr1State != "empty") Tr1State = "muted";
+            if (Tr2State != "empty") Tr2State = "muted";
+            if (Tr3State != "empty") Tr3State = "muted";
+            if (Tr4State != "empty") Tr4State = "muted";
+            Tr1PlayedWRecPlay = false;
+            Tr2PlayedWRecPlay = false;
+            Tr3PlayedWRecPlay = false;
+            Tr4PlayedWRecPlay = false;
+            stopMode = true;    //make the stopMode variable and mode true
+            previousPlay = false;
+            doublePressClear = false;
+         // }
           time = millis();
         }
         if (buttonpress == "RecPlay"){    //if the Rec/Play button is pressed
           sendNote(0x31);    //send the note
-          if (stopMode) ringPosition = 0;    //if we are in stop mode, make the ring spin from the position 0
-          if (!stopModeUsed){    //if stop Mode hasn't been used, just play every track that isn't empty: 
-            if (Tr1State != "empty") Tr1State = "playing";
-            else if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            if (Tr2State != "empty") Tr2State = "playing";
-            else if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            if (Tr3State != "empty") Tr3State = "playing";
-            else if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            if (Tr4State != "empty") Tr4State = "playing";
-            else if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-          }else if (!previousPlay && stopModeUsed){    //if stop mode has been used and the previous pressed button isn't RecPlay
-            if (!Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop){    //if none of the tracks has been pressed in stop, play every track that isn't empty: 
+          //if(readMIDI(29)) {
+            if (stopMode) ringPosition = 0;    //if we are in stop mode, make the ring spin from the position 0
+            if (!stopModeUsed){    //if stop Mode hasn't been used, just play every track that isn't empty: 
               if (Tr1State != "empty") Tr1State = "playing";
+              else if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
               if (Tr2State != "empty") Tr2State = "playing";
+              else if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
               if (Tr3State != "empty") Tr3State = "playing";
+              else if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
               if (Tr4State != "empty") Tr4State = "playing";
-            }else {    //if a track has been pressed and it isn't empty, play it
-              if (Tr1PressedInStop) Tr1State = "playing";
-              if (Tr2PressedInStop) Tr2State = "playing";
-              if (Tr3PressedInStop) Tr3State = "playing";
-              if (Tr4PressedInStop) Tr4State = "playing";
+              else if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+            }else if (!previousPlay && stopModeUsed){    //if stop mode has been used and the previous pressed button isn't RecPlay
+              if (!Tr1PressedInStop && !Tr2PressedInStop && !Tr3PressedInStop && !Tr4PressedInStop){    //if none of the tracks has been pressed in stop, play every track that isn't empty: 
+                if (Tr1State != "empty") Tr1State = "playing";
+                if (Tr2State != "empty") Tr2State = "playing";
+                if (Tr3State != "empty") Tr3State = "playing";
+                if (Tr4State != "empty") Tr4State = "playing";
+              }else {    //if a track has been pressed and it isn't empty, play it
+                if (Tr1PressedInStop) Tr1State = "playing";
+                if (Tr2PressedInStop) Tr2State = "playing";
+                if (Tr3PressedInStop) Tr3State = "playing";
+                if (Tr4PressedInStop) Tr4State = "playing";
+              }
+              previousPlay = true;
+            }else if (previousPlay && stopModeUsed){    //if the previous pressed button is RecPlay, play every track that is not empty:
+              if (Tr1State != "empty") Tr1State = "playing";
+              else if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+              if (Tr2State != "empty") Tr2State = "playing";
+              else if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+              if (Tr3State != "empty") Tr3State = "playing";
+              else if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+              if (Tr4State != "empty") Tr4State = "playing";
+              else if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+              previousPlay = false;
             }
-            previousPlay = true;
-          }else if (previousPlay && stopModeUsed){    //if the previous pressed button is RecPlay, play every track that is not empty:
-            if (Tr1State != "empty") Tr1State = "playing";
-            else if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            if (Tr2State != "empty") Tr2State = "playing";
-            else if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            if (Tr3State != "empty") Tr3State = "playing";
-            else if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            if (Tr4State != "empty") Tr4State = "playing";
-            else if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-            previousPlay = false;
-          }
-          stopMode = false;
-          doublePressClear = false;
+            stopMode = false;
+            doublePressClear = false;
+          //}
           time = millis();
         }
         if (stopMode){    //if we are in stop mode
           if (buttonpress == "Track1" && Tr1State != "empty"){    //if the track 1 button is pressed and it isn't empty
             sendNote(0x2C);    //send the note
-            Tr1PressedInStop = !Tr1PressedInStop;    //toggle between the track being pressed in stop mode and not
-            selectedTrack = 1;    //select the track
-            doublePressClear = false;
+            //if(readMIDI(29)) {
+              Tr1PressedInStop = !Tr1PressedInStop;    //toggle between the track being pressed in stop mode and not
+              selectedTrack = 1;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
           if (buttonpress == "Track2" && Tr2State != "empty"){    //if the track 2 button is pressed and it isn't empty
             sendNote(0x2D);    //send the note
-            Tr2PressedInStop = !Tr2PressedInStop;    //toggle between the track being pressed in stop mode and not
-            selectedTrack = 2;    //select the track
-            doublePressClear = false;
+           //if(readMIDI(29)) {
+              Tr2PressedInStop = !Tr2PressedInStop;    //toggle between the track being pressed in stop mode and not
+              selectedTrack = 2;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
           if (buttonpress == "Track3" && Tr3State != "empty"){    //if the track 3 button is pressed and it isn't empty
             sendNote(0x2E);    //send the note
-            Tr3PressedInStop = !Tr3PressedInStop;    //toggle between the track being pressed in stop mode and not
-            selectedTrack = 3;    //select the track
-            doublePressClear = false;
+           // if(readMIDI(29)) {
+              Tr3PressedInStop = !Tr3PressedInStop;    //toggle between the track being pressed in stop mode and not
+              selectedTrack = 3;    //select the track
+              doublePressClear = false;
+           // }
             time = millis();
           }
           if (buttonpress == "Track4" && Tr4State != "empty"){    //if the track 4 button is pressed and it isn't empty
             sendNote(0x2F);    //send the note
-            Tr4PressedInStop = !Tr4PressedInStop;    //toggle between the track being pressed in stop mode and not
-            selectedTrack = 4;    //select the track
-            doublePressClear = false;
+           // if(readMIDI(29)) {
+              Tr4PressedInStop = !Tr4PressedInStop;    //toggle between the track being pressed in stop mode and not
+              selectedTrack = 4;    //select the track
+              doublePressClear = false;
+           // }
             time = millis();
           }
         }else if (!stopMode){    //if we aren't in stop mode
           if (buttonpress == "Track1" && Tr1State != "empty"){    //if the track 1 button is pressed and it isn't empty
             sendNote(0x2C);    //send the note
-            //toggle between playing and muted when it was pressed in stop mode:
-            if (Tr1PressedInStop && Tr1State == "playing") previousPlay = true, Tr1State = "muted";
-            else if (Tr1PressedInStop && Tr1State == "muted") previousPlay = true, Tr1State = "playing";
-            else if (!Tr1PressedInStop){    //if it wasn't pressed in stop
-              if (Tr1State == "playing") Tr1State = "muted";    //and it is playing, mute it
-              else if (Tr1State == "muted"){    //else if it is muted, play it
-              //reset everything in stopMode:
-                Tr1State = "playing"; 
-                stopModeUsed = false;
-                Tr1PressedInStop = false;
-                Tr2PressedInStop = false;
-                Tr3PressedInStop = false;
-                Tr4PressedInStop = false;
+            //if(readMIDI(29)) {
+              //toggle between playing and muted when it was pressed in stop mode:
+              if (Tr1PressedInStop && Tr1State == "playing") previousPlay = true, Tr1State = "muted";
+              else if (Tr1PressedInStop && Tr1State == "muted") previousPlay = true, Tr1State = "playing";
+              else if (!Tr1PressedInStop){    //if it wasn't pressed in stop
+                if (Tr1State == "playing") Tr1State = "muted";    //and it is playing, mute it
+                else if (Tr1State == "muted"){    //else if it is muted, play it
+                //reset everything in stopMode:
+                  Tr1State = "playing"; 
+                  stopModeUsed = false;
+                  Tr1PressedInStop = false;
+                  Tr2PressedInStop = false;
+                  Tr3PressedInStop = false;
+                  Tr4PressedInStop = false;
+                }
               }
-            }
-            selectedTrack = 1;    //select the track
-            doublePressClear = false;
+              selectedTrack = 1;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
           if (buttonpress == "Track2" && !firstRecording && Tr2State != "empty"){    //if the track 2 button is pressed and it isn't empty
             sendNote(0x2D);    //send the note
-            //toggle between playing and muted when it was pressed in stop mode:
-            if (Tr2PressedInStop && Tr2State == "playing") previousPlay = true, Tr2State = "muted";
-            else if (Tr2PressedInStop && Tr2State == "muted") previousPlay = true, Tr2State = "playing";
-            else if (!Tr2PressedInStop){    //if it wasn't pressed in stop
-              if (Tr2State == "playing") Tr2State = "muted";    //and it is playing, mute it
-              else if (Tr2State == "muted"){    //else if it is muted, play it
-              //reset everything in stopMode:
-                Tr2State = "playing"; 
-                stopModeUsed = false;
-                Tr1PressedInStop = false;
-                Tr2PressedInStop = false;
-                Tr3PressedInStop = false;
-                Tr4PressedInStop = false;
+            //if(readMIDI(29)) {
+              //toggle between playing and muted when it was pressed in stop mode:
+              if (Tr2PressedInStop && Tr2State == "playing") previousPlay = true, Tr2State = "muted";
+              else if (Tr2PressedInStop && Tr2State == "muted") previousPlay = true, Tr2State = "playing";
+              else if (!Tr2PressedInStop){    //if it wasn't pressed in stop
+                if (Tr2State == "playing") Tr2State = "muted";    //and it is playing, mute it
+                else if (Tr2State == "muted"){    //else if it is muted, play it
+                //reset everything in stopMode:
+                  Tr2State = "playing"; 
+                  stopModeUsed = false;
+                  Tr1PressedInStop = false;
+                  Tr2PressedInStop = false;
+                  Tr3PressedInStop = false;
+                  Tr4PressedInStop = false;
+                }
               }
-            }
-            selectedTrack = 2;    //select the track
-            doublePressClear = false;
+              selectedTrack = 2;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
           if (buttonpress == "Track3" && !firstRecording && Tr3State != "empty"){    //if the track 3 button is pressed and it isn't empty
             sendNote(0x2E);    //send the note
-            //toggle between playing and muted when it was pressed in stop mode:
-            if (Tr3PressedInStop && Tr3State == "playing") previousPlay = true, Tr3State = "muted";
-            else if (Tr3PressedInStop && Tr3State == "muted") previousPlay = true,Tr3State = "playing" ;
-            else if (!Tr3PressedInStop){    //if it wasn't pressed in stop
-              if (Tr3State == "playing") Tr3State = "muted";    //and it is playing, mute it
-              else if (Tr3State == "muted"){     //else if it is muted, play it
-              //reset everything in stopMode:
-                Tr3State = "playing";
-                stopModeUsed = false;
-                Tr1PressedInStop = false;
-                Tr2PressedInStop = false;
-                Tr3PressedInStop = false;
-                Tr4PressedInStop = false;
+            //if(readMIDI(29)) {
+              //toggle between playing and muted when it was pressed in stop mode:
+              if (Tr3PressedInStop && Tr3State == "playing") previousPlay = true, Tr3State = "muted";
+              else if (Tr3PressedInStop && Tr3State == "muted") previousPlay = true,Tr3State = "playing" ;
+              else if (!Tr3PressedInStop){    //if it wasn't pressed in stop
+                if (Tr3State == "playing") Tr3State = "muted";    //and it is playing, mute it
+                else if (Tr3State == "muted"){     //else if it is muted, play it
+                //reset everything in stopMode:
+                  Tr3State = "playing";
+                  stopModeUsed = false;
+                  Tr1PressedInStop = false;
+                  Tr2PressedInStop = false;
+                  Tr3PressedInStop = false;
+                  Tr4PressedInStop = false;
+                }
               }
-            }
-            selectedTrack = 3;    //select the track
-            doublePressClear = false;
+              selectedTrack = 3;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
           if (buttonpress == "Track4" && !firstRecording && Tr4State != "empty"){    //if the track 4 button is pressed and it isn't empty
             sendNote(0x2F);    //send the note
-            //toggle between playing and muted when it was pressed in stop mode:
-            if (Tr4PressedInStop && Tr4State == "playing") previousPlay = true, Tr4State = "muted";
-            else if (Tr4PressedInStop && Tr4State == "muted") previousPlay = true, Tr4State = "playing";
-            else if (!Tr4PressedInStop){    //if it wasn't pressed in stop
-              if (Tr4State == "playing") Tr4State = "muted";    //and it is playing, mute it
-              else if (Tr4State == "muted"){    //else if it is muted, play it
-              //reset everything in stopMode:
-                Tr4State = "playing";
-                stopModeUsed = false;
-                Tr1PressedInStop = false;
-                Tr2PressedInStop = false;
-                Tr3PressedInStop = false;
-                Tr4PressedInStop = false;
+            //if(readMIDI(29)) {
+              //toggle between playing and muted when it was pressed in stop mode:
+              if (Tr4PressedInStop && Tr4State == "playing") previousPlay = true, Tr4State = "muted";
+              else if (Tr4PressedInStop && Tr4State == "muted") previousPlay = true, Tr4State = "playing";
+              else if (!Tr4PressedInStop){    //if it wasn't pressed in stop
+                if (Tr4State == "playing") Tr4State = "muted";    //and it is playing, mute it
+                else if (Tr4State == "muted"){    //else if it is muted, play it
+                //reset everything in stopMode:
+                  Tr4State = "playing";
+                  stopModeUsed = false;
+                  Tr1PressedInStop = false;
+                  Tr2PressedInStop = false;
+                  Tr3PressedInStop = false;
+                  Tr4PressedInStop = false;
+                }
               }
-            }
-            selectedTrack = 4;    //select the track
-            doublePressClear = false;
+              selectedTrack = 4;    //select the track
+              doublePressClear = false;
+            //}
             time = millis();
           }
         }
@@ -561,12 +621,14 @@ void loop() {
       if (buttonpress == "Clear" && !doublePressClear){
         if (canClearTrack){    //if we can clear the selected track, do it
           sendNote(0x1E);
-          if(selectedTrack == 1 && Tr1State == "playing") Tr1State = "empty", Tr1PlayedWRecPlay = false;
-          if(selectedTrack == 2 && Tr2State == "playing") Tr2State = "empty", Tr2PlayedWRecPlay = false;
-          if(selectedTrack == 3 && Tr3State == "playing") Tr3State = "empty", Tr3PlayedWRecPlay = false;
-          if(selectedTrack == 4 && Tr4State == "playing") Tr4State = "empty", Tr4PlayedWRecPlay = false;
-          doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
-          previousPlay = false;
+          //if(readMIDI(29)) {
+            if(selectedTrack == 1 && Tr1State == "playing") Tr1State = "empty", Tr1PlayedWRecPlay = false;
+            if(selectedTrack == 2 && Tr2State == "playing") Tr2State = "empty", Tr2PlayedWRecPlay = false;
+            if(selectedTrack == 3 && Tr3State == "playing") Tr3State = "empty", Tr3PlayedWRecPlay = false;
+            if(selectedTrack == 4 && Tr4State == "playing") Tr4State = "empty", Tr4PlayedWRecPlay = false;
+            doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
+            previousPlay = false;
+          //}
         } else if (!canClearTrack) reset();
         time2 = millis();
       }else if (buttonpress == "Clear" && doublePressClear) reset();    //reset everything when Clear is pressed twice
@@ -744,3 +806,20 @@ void ringLEDs(){    //function that makes the spinning animation for the led rin
     FastLED.show();    //Finally, display all LED's data (illuminate the LED ring)
   }
 }
+
+/*
+bool readMIDI(byte value){
+  do {
+    if (Serial.available()){
+      byte commandByte = Serial.read();
+      byte valueByte = Serial.read();
+      byte velocityByte = Serial.read();
+      if (commandByte == 144 && valueByte == value && velocityByte > 0) readMIDIreturn = true;
+      else readMIDIreturn = false;
+    } else readMIDIreturn = false;
+  }
+  while (Serial.available() >= 2);
+  if (readMIDIreturn == true) return true;
+  else return false;
+}
+*/

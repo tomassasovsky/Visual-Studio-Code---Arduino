@@ -1,6 +1,5 @@
 //* In this code, i'll be testing the MIDI input and the rotary encoder
 
-#include <MIDI.h>
 
 unsigned int volTr1 = 127;
 unsigned int volTr2 = 127;
@@ -16,10 +15,8 @@ int selectedTrack = 1;
 unsigned int lastState;
 unsigned int state;
 
-MIDI_CREATE_DEFAULT_INSTANCE();
 
 void setup(){
-  MIDI.begin(MIDI_CHANNEL_OMNI);
   pinMode(clockPin, INPUT_PULLUP);
   pinMode(dataPin, INPUT_PULLUP);
   pinMode(swPin, INPUT_PULLUP);

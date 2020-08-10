@@ -12,7 +12,8 @@
                 "path": [
                     "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include",
                     "A:\\Projects\\Arduino\\libraries",
-                    "C:\\ProgramData\\Arduino - VSCode\\Libraries"
+                    "C:\\ProgramData\\Arduino - VSCode\\Libraries",
+                    "C:\\ProgramData\\Arduino - VSCode\\MML_TomasSasovsky"
                 ]
             },
             "forcedInclude": [
