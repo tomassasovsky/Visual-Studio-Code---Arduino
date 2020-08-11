@@ -25,15 +25,19 @@ CRGB LEDs[qtyLEDs];
 #define potPin A0
 #define nonRingLEDs 7
 
-unsigned int potVal = 0;    //current pot value
-unsigned int lastPotVal = 0;    //previous pot value
+unsigned int volTr1 = 127;
+unsigned int volTr2 = 127;
+unsigned int volTr3 = 127;
+unsigned int volTr4 = 127;
 
-unsigned int volTr1 = 0;
-unsigned int volTr2 = 0;
-unsigned int volTr3 = 0;
-unsigned int volTr4 = 0;
+#define clockPin A0
+#define dataPin A1
+#define swPin A2
 
-bool readMIDIreturn;
+unsigned int lastState;
+unsigned int state;
+
+bool volumeChanging = false;
 
 bool playMode = LOW;    //LOW = Rec mode, HIGH = Play Mode
 long time = 0;    //the last time the output pin was toggled
@@ -107,6 +111,10 @@ void setup() {
   pinMode(clearButton, INPUT_PULLUP);
   pinMode(X2Button, INPUT_PULLUP);
   pinMode(potPin, INPUT);    //declaring potentiometer as INPUT
+  pinMode(clockPin, INPUT_PULLUP);
+  pinMode(dataPin, INPUT_PULLUP);
+  pinMode(swPin, INPUT_PULLUP);
+  lastState = digitalRead(clockPin);
   sendNote(0x1F);    //resets the pedal
   sendNote(0x2B);    //gets into Record Mode
   startLEDs();    //animation for the LEDs when the pedal is reset
@@ -114,6 +122,7 @@ void setup() {
 }
 
 void loop() {
+  //if (firstRecording && ) sendNote();
   if ((Tr1State != "empty" || Tr2State != "empty" || Tr3State != "empty" || Tr4State != "empty") && !stopMode) ringLEDs();    //the led ring spins when the pedal is recording, overdubbing or playing.
   if ((Tr1State == "recording" || Tr1State == "overdubbing") || (Tr2State == "recording" || Tr2State == "overdubbing") || (Tr3State == "recording" || Tr3State == "overdubbing") || (Tr4State == "recording" || Tr4State == "overdubbing") && firstRecording) canStopTrack = false; 
   else canStopTrack = true;    //you can only clear the selected track and change between modes when you are not recording for the first time.
@@ -134,6 +143,13 @@ void loop() {
 
   buttonpress = "released";   //release the variable buttonpress every time the void loops
 
+  state = digitalRead(dataPin);
+    
+  constrain(volTr1, 0, 127);
+  constrain(volTr2, 0, 127);
+  constrain(volTr3, 0, 127);
+  constrain(volTr4, 0, 127);
+
   // set the variable buttonpress to a recognizable name when a button is pressed:
   if (digitalRead(recPlayButton) == LOW) buttonpress = "RecPlay";
   if (digitalRead(stopButton) == LOW) buttonpress = "Stop";
@@ -145,6 +161,7 @@ void loop() {
   if (digitalRead(clearButton) == LOW) buttonpress = "Clear";
   if (digitalRead(X2Button) == LOW) buttonpress = "X2";
   if (digitalRead(modeButton) == LOW) buttonpress	= "Mode";
+  if (digitalRead(swPin) == LOW) buttonpress = "NextTrack";
 
   if (millis() - time > debounceTime){    //debounce
     if (buttonpress != lastbuttonpress && buttonpress != "released"){    //in any mode
@@ -202,6 +219,8 @@ void loop() {
         //}
         time = millis();
       }
+      if(buttonpress == "NextTrack" && selectedTrack != 4) selectedTrack++;
+      else if (buttonpress == "NextTrack" && selectedTrack == 4) selectedTrack = 1;
       if (buttonpress == "X2") {
         if((selectedTrack == 1) && ((Tr1State == "playing") || (Tr1State == "empty" && !firstRecording) || (Tr1State == "muted"))) {
           sendNote(0x20);
@@ -633,30 +652,32 @@ void loop() {
         time2 = millis();
       }else if (buttonpress == "Clear" && doublePressClear) reset();    //reset everything when Clear is pressed twice
       if (buttonpress == "Clear" && firstRecording){    //if nothing is recorded yet, just send the potentiometer (volume) value
-        lastPotVal = potVal;
-        if (potVal/8 > 122) potVal = 1023;    //clear the signal a bit
-        if (potVal/8 < 6) potVal = 0;
-        //send the value:
-        Serial.write(176);    //176 = CC Command
-        Serial.write(1);    //1 = Which Control
-        Serial.write(potVal/8);    // Value read from potentiometer
+        volumeChanging = true;
+        sendVolume();
+        volumeChanging = false;
         time2 = millis();
       }
     }
   }
-  potVal = analogRead(potPin);    //Divide by 8 to get range of 0-127 for midi
-  unsigned int diffPot = abs(lastPotVal - potVal);
-  
-  if (diffPot > 30){    //If the value does not = the last value the following command is made. This is because the pot has been turned. Otherwise the pot remains the same and no midi message is output.
-    lastPotVal = potVal;    //so that the arduino doesn't send the potentiometer value unless it changes
-    //cleanup of the potentiometer value:
-    if (potVal/8 > 123) potVal = 1023;
-    if (potVal < 40) potVal = 0;
-    Serial.write(176);    //176 = CC Command
-    if (selectedTrack != 4)Serial.write(1);    //1 = Which Control
-    else Serial.write(2);
-    Serial.write(potVal/8);    //Value read from potentiometer
-  }
+  if(state != lastState){
+    if (digitalRead(dataPin) != state){
+      if (selectedTrack == 1) volTr1++;
+      if (selectedTrack == 2) volTr2++;
+      if (selectedTrack == 3) volTr3++;
+      if (selectedTrack == 4) volTr4++;
+      volumeChanging = true;
+    }
+    else {
+      if (selectedTrack == 1) volTr1--;
+      if (selectedTrack == 2) volTr2--;
+      if (selectedTrack == 3) volTr3--;
+      if (selectedTrack == 4) volTr4--;
+      volumeChanging = true;
+    }
+  } else volumeChanging = false;
+
+  lastState = state;
+  if (volumeChanging) sendVolume();
 }
 
 void sendNote(int pitch){
@@ -737,11 +758,7 @@ void reset(){    //function to reset the pedal
   previousPlay = false;   
   sendNote(0x2B);    //sends the Record Mode note
   playMode = LOW;    //into record mode
-  delay(50);
   //sends potentiometer value:
-  Serial.write(176);    //176 = CC Command
-  Serial.write(1);    //2 = Which Control
-  Serial.write(potVal/8);    //Value read from potentiometer
   ringPosition = 0;    //resets the ring position
   startLEDs();    //animation to show the pedal has been reset
   doublePressClear = false;
@@ -805,6 +822,15 @@ void ringLEDs(){    //function that makes the spinning animation for the led rin
     if (ringPosition == qtyLEDs - nonRingLEDs) ringPosition = 0;    //If one end is reached, reset the position to loop around
     FastLED.show();    //Finally, display all LED's data (illuminate the LED ring)
   }
+}
+
+void sendVolume(){
+  Serial.write(176);    //176 = CC Command
+  Serial.write(selectedTrack);    // Which value: if the selected Track is 1, the value sent will be 1; If it's 2, the value 2 will be sent and so on.
+  if (selectedTrack == 1) Serial.write(volTr1);    //This sends the velocity corresponding to the selected track, which goes from 0 to 127.
+  if (selectedTrack == 2) Serial.write(volTr2);
+  if (selectedTrack == 3) Serial.write(volTr3);
+  if (selectedTrack == 4) Serial.write(volTr4);
 }
 
 /*
