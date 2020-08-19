@@ -1,8 +1,8 @@
-// TODO Change the potentiometer for a rotary encoder
-// TODO: Add variables for the potentiometer value for each track
-// TODO: Configure the encoder switch to toggle between tracks (select the next track)
-// TODO: Add message confirmation for MIDI signals with the MIDI Read function (MIDI Library)
-//! TODO: Finish fixing the FocusLock bugs
+// TODO Change the potentiometer for a rotary encoder (almost done)
+// TODO: Add variables for the potentiometer value for each track (done)
+// TODO: Configure the encoder switch to toggle between tracks (select the next track) (i think it works)
+// TODO: Add message confirmation for MIDI signals with the MIDI Read function (MIDI Library) (not even close)
+//! TODO: Finish fixing the FocusLock bugs (far away)
 
 #include <FastLED.h>    //library for controlling the LEDs
 
@@ -22,7 +22,6 @@ CRGB LEDs[qtyLEDs];
 #define track4Button 10
 #define clearButton 11
 #define X2Button 12
-#define potPin A0
 #define nonRingLEDs 7
 
 unsigned int volTr1 = 127;
@@ -55,7 +54,7 @@ because of this, we need to keep an even tighter tracking of each of the track's
 so if Rec/Play is pressed in Play Mode and, for example, the track 3 is empty, the corresponding variable (Tr3PlayedWRecPlay) turns true
 likewise, when the button Stop is pressed, every track gets muted, so every one of these variables turn false.
 */
-bool Tr1PlayedWRecPlay = false;    
+bool Tr1PlayedWRecPlay = false;
 bool Tr2PlayedWRecPlay = false;
 bool Tr3PlayedWRecPlay = false;
 bool Tr4PlayedWRecPlay = false;
@@ -168,43 +167,25 @@ void loop() {
       if (buttonpress == "Mode" && firstTrack == 0){ //if modeButton is pressed and mode can be changed
         if (playMode == LOW){    //if the current mode is Record Mode
           sendNote(0x29);    //send a note so that the pedal knows we've change modes
-          //if(readMIDI(29)) {
-            playMode = HIGH;    //enter play mode
-            //if any of the tracks is recording when pressing the button, play them:
-            if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
-            if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
-            if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
-            if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
-            // reset the focuslock function:
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-            stopModeUsed = false;
-            previousPlay = false;
-            stopMode = false;
-            doublePressClear = false;
-          //}
+          playMode = HIGH;    //enter play mode
         }else{
           sendNote(0x2B);
-          //if(readMIDI(29)) {
-            playMode = LOW;    //entering rec mode
-            //if any of the tracks is recording when pressing the button, play them:
-            if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
-            if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
-            if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
-            if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
-            // reset the focuslock function:
-            Tr1PressedInStop = false;
-            Tr2PressedInStop = false;
-            Tr3PressedInStop = false;
-            Tr4PressedInStop = false;
-            stopModeUsed = false;
-            previousPlay = false;
-            stopMode = false;
-            doublePressClear = false;
-          //}
+          playMode = LOW;    //entering rec mode
         }
+        //if any of the tracks is recording when pressing the button, play them:
+        if (Tr1State != "muted" && Tr1State != "empty") Tr1State = "playing";  
+        if (Tr2State != "muted" && Tr2State != "empty") Tr2State = "playing";
+        if (Tr3State != "muted" && Tr3State != "empty") Tr3State = "playing";
+        if (Tr4State != "muted" && Tr4State != "empty") Tr4State = "playing";
+        // reset the focuslock function:
+        Tr1PressedInStop = false;
+        Tr2PressedInStop = false;
+        Tr3PressedInStop = false;
+        Tr4PressedInStop = false;
+        stopModeUsed = false;
+        previousPlay = false;
+        stopMode = false;
+        doublePressClear = false;
         time = millis();
       }
       if (buttonpress == "Undo"){    //if the Undo button is pressed
@@ -224,63 +205,55 @@ void loop() {
       if (buttonpress == "X2") {
         if((selectedTrack == 1) && ((Tr1State == "playing") || (Tr1State == "empty" && !firstRecording) || (Tr1State == "muted"))) {
           sendNote(0x20);
-          //if(readMIDI(29)) {
-            doublePressClear = false;
-            previousPlay = false;
-            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            else if (Tr1State == "muted") Tr1State = "playing";
-            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            else if (Tr2State == "muted") Tr2State = "playing";
-            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            else if (Tr3State == "muted") Tr3State = "playing";
-            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-            else if (Tr4State == "muted") Tr4State = "playing";
-          //}
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
         }
         else if((selectedTrack == 2) && ((Tr2State == "playing") || (Tr2State == "empty" && !firstRecording) || (Tr2State == "muted"))) {
           sendNote(0x20);
-          //if(readMIDI(29)) {
-            doublePressClear = false;
-            previousPlay = false;
-            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            else if (Tr1State == "muted") Tr1State = "playing";
-            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            else if (Tr2State == "muted") Tr2State = "playing";
-            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            else if (Tr3State == "muted") Tr3State = "playing";
-            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-            else if (Tr4State == "muted") Tr4State = "playing";
-          //}
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
         }
         else if((selectedTrack == 3) && ((Tr3State == "playing") || (Tr3State == "empty" && !firstRecording) || (Tr3State == "muted"))) {
           sendNote(0x20);
-          //if(readMIDI(29)) {
-            doublePressClear = false;
-            previousPlay = false;
-            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            else if (Tr1State == "muted") Tr1State = "playing";
-            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            else if (Tr2State == "muted") Tr2State = "playing";
-            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            else if (Tr3State == "muted") Tr3State = "playing";
-            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-            else if (Tr4State == "muted") Tr4State = "playing";
-          //}
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
         }
         else if((selectedTrack == 4) && ((Tr4State == "playing") || (Tr4State == "empty" && !firstRecording) || (Tr4State == "muted"))) {
           sendNote(0x20);
-          //if(readMIDI(29)) {
-            doublePressClear = false;
-            previousPlay = false;
-            if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
-            else if (Tr1State == "muted") Tr1State = "playing";
-            if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
-            else if (Tr2State == "muted") Tr2State = "playing";
-            if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
-            else if (Tr3State == "muted") Tr3State = "playing";
-            if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
-            else if (Tr4State == "muted") Tr4State = "playing";
-          //}  
+          doublePressClear = false;
+          previousPlay = false;
+          if (Tr1State == "empty") Tr1PlayedWRecPlay = true;
+          else if (Tr1State == "muted") Tr1State = "playing";
+          if (Tr2State == "empty") Tr2PlayedWRecPlay = true;
+          else if (Tr2State == "muted") Tr2State = "playing";
+          if (Tr3State == "empty") Tr3PlayedWRecPlay = true;
+          else if (Tr3State == "muted") Tr3State = "playing";
+          if (Tr4State == "empty") Tr4PlayedWRecPlay = true;
+          else if (Tr4State == "muted") Tr4State = "playing";
         }
         time = millis();
       }
@@ -743,14 +716,10 @@ void reset(){    //function to reset the pedal
   Tr3State = "empty";
   Tr4State = "empty";
   //resets the stopMode:
-  Tr1PressedInStop = false;
-  Tr2PressedInStop = false;
-  Tr3PressedInStop = false;
-  Tr4PressedInStop = false;
-  Tr1PlayedWRecPlay = false;
-  Tr2PlayedWRecPlay = false;
-  Tr3PlayedWRecPlay = false;
-  Tr4PlayedWRecPlay = false;
+  Tr1PressedInStop = false, Tr1PlayedWRecPlay = false;
+  Tr2PressedInStop = false, Tr2PlayedWRecPlay = false;
+  Tr3PressedInStop = false, Tr3PlayedWRecPlay = false;
+  Tr4PressedInStop = false, Tr4PlayedWRecPlay = false;
   stopModeUsed = false;
   stopMode = false;
   selectedTrack = 1;    //selects the 1rst track
@@ -812,7 +781,7 @@ void startLEDs(){    //animation to show the pedal has been reset
   }
   setHue = 96;    //sets the led ring colour to green
 }
- 
+
 void ringLEDs(){    //function that makes the spinning animation for the led ring
   FastLED.setBrightness(255);
   EVERY_N_MILLISECONDS(ringSpeed){    //this gets an entire spin in 3/4 of a second (0.75s) Half a second would be 31.25, a second would be 62.5
@@ -832,7 +801,6 @@ void sendVolume(){
   if (selectedTrack == 3) Serial.write(volTr3);
   if (selectedTrack == 4) Serial.write(volTr4);
 }
-
 /*
 bool readMIDI(byte value){
   do {
