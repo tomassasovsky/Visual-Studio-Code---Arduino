@@ -47,12 +47,16 @@ long time2 = 0;
 #define debounceTime 150    //the debounce time, increase if the output flickers (was 150)
 #define doublePressClearTime 750
 
-String State[4] = {"empty", "empty", "empty", "empty"};
+char State[4] = {'E', 'E', 'E', 'E'};
 
 #define TR1 0
 #define TR2 1
 #define TR3 2
 #define TR4 3
+
+byte ringPosition = 0;    //Array position of LED that will be lit (0 to 15)
+int setHue = 96;    //yellow is 35/50 = 45, red is 0, green is 96
+#define ringSpeed  54.6875    //46.875 62.5
 
 int myStartLEDs[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
 
@@ -94,9 +98,7 @@ String lastbuttonpress = "";    //To store the previous button pressed
 #define clearLED 17
 #define X2LED 18
 
-byte ringPosition = 0;    //Array position of LED that will be lit (0 to 15)
-int setHue = 96;    //yellow is 35/50 = 45, red is 0, green is 96
-#define ringSpeed  54.6875    //46.875 62.5
+
 
 void setup() {
   //Serial.begin(38400);    //to use LoopMIDI and Hairless MIDI Serial
@@ -126,17 +128,17 @@ void setup() {
 void loop() {
   buttonpress = "released";   //release the variable buttonpress every time the void loops
   
-  if ((State[TR1] != "empty" || State[TR2] != "empty" || State[TR3] != "empty" || State[TR4] != "empty") && !stopMode) ringLEDs();    //the led ring spins when the pedal is recording, overdubbing or playing.
-  if ((State[selectedTrack] == "recording" || State[selectedTrack] == "overdubbing") && firstRecording) canStopTrack = false;
+  if ((State[TR1] != 'E' || State[TR2] != 'E' || State[TR3] != 'E' || State[TR4] != 'E') && !stopMode) ringLEDs();    //the led ring spins when the pedal is recording, overdubbing or playing.
+  if ((State[selectedTrack] == 'R' || State[selectedTrack] == 'O') && firstRecording) canStopTrack = false;
   else canStopTrack = true;    //you can only clear the selected track and change between modes when you are not recording for the first time.
   if (firstTrack == 5) canClearTrack = true;
   else canClearTrack = false;
-  if (State[TR1] == "empty" && State[TR2] == "empty" && State[TR3] == "empty" && State[TR4] == "empty" && !firstRecording) reset();   //reset the pedal when every track is empty but it has been used (for example, when the only track playing is Tr1 and you clear it, it resets the whole pedal)
+  if (State[TR1] == 'E' && State[TR2] == 'E' && State[TR3] == 'E' && State[TR4] == 'E' && !firstRecording) reset();   //reset the pedal when every track is empty but it has been used (for example, when the only track playing is Tr1 and you clear it, it resets the whole pedal)
   if (PressedInStop[TR1] || PressedInStop[TR2] || PressedInStop[TR3] || PressedInStop[TR4]) stopModeUsed = true;
   else stopModeUsed = false;
   if (digitalRead(clearButton) == HIGH) doublePressClear = false;
 
-  if (State[selectedTrack] == "recording" && firstRecording) firstTrack = selectedTrack;
+  if (State[selectedTrack] == 'R' && firstRecording) firstTrack = selectedTrack;
   else firstTrack = 5;
 
   state = digitalRead(dataPin);
@@ -166,7 +168,7 @@ void loop() {
         }
         //if any of the tracks is recording when pressing the button, play them:
         for (int i = 0; i < 4; i++){
-          if (State[i] != "muted" && State[i] != "empty") State[i] = "playing";
+          if (State[i] != 'M' && State[i] != 'E') State[i] = 'P';
           PressedInStop[i] = false;
         }
         // reset the focuslock function:
@@ -179,7 +181,7 @@ void loop() {
       if (buttonpress == "Undo" && firstTrack == 5){    //if the Undo button is pressed
         sendNote(0x22);    //send a note that undoes the last thing it did
         for (int i = 0; i < 4; i++){
-          if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //play a track if it is being recorded
+          if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //play a track if it is being recorded
         }
         doublePressClear = false;
         previousPlay = false;
@@ -188,22 +190,22 @@ void loop() {
       if (buttonpress == "NextTrack" && selectedTrack != TR4) selectedTrack++;
       else if (buttonpress == "NextTrack" && selectedTrack == TR4) selectedTrack = TR1;
       if (buttonpress == "X2") {
-        if ((State[selectedTrack] == "playing" || State[selectedTrack] == "muted" || State[selectedTrack] == "empty") && !firstRecording) {
+        if ((State[selectedTrack] == 'P' || State[selectedTrack] == 'M' || State[selectedTrack] == 'E') && !firstRecording) {
           sendNote(0x20);
           doublePressClear = false;
           previousPlay = false;
           for (int i = 0; i < 4; i++){
-            if (State[i] == "muted") State[i] = "playing"; //play a track if it is muted
-            else if (State[i] == "empty") PlayedWRecPlay[i] = "true";
+            if (State[i] == 'M') State[i] = 'P'; //play a track if it is muted
+            else if (State[i] == 'E') PlayedWRecPlay[i] = "true";
           }
         }
         time = millis();
       }
       if (playMode == LOW){    //if the current mode is Record Mode
         if (buttonpress == "Stop" && canStopTrack){    //if Stop is pressed
-          if (State[selectedTrack] != "overdubbing" && State[selectedTrack] != "recording" && State[selectedTrack] != "empty"){
+          if (State[selectedTrack] != 'O' && State[selectedTrack] != 'R' && State[selectedTrack] != 'E'){
             sendNote(0x28);    //send the note
-            State[selectedTrack] = "muted";
+            State[selectedTrack] = 'M';
             doublePressClear = false;
           }
           time = millis();
@@ -211,13 +213,13 @@ void loop() {
         if (buttonpress == "Track1" && (firstTrack == 0 || firstTrack == 5)){    //if the track 1 button is pressed
           sendNote(0x23);    //send the note
           stopMode = false;
-          if (State[TR1] == "playing" || State[TR1] == "empty" || State[TR1] == "muted"){    //if it's playing, empty or muted, record it
+          if (State[TR1] == 'P' || State[TR1] == 'E' || State[TR1] == 'M'){    //if it's playing, empty or muted, record it
             for (int i = 0; i < 4; i++){
-              if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+              if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
             }
-            State[TR1] = "recording";
-          }else if (State[TR1] == "recording") State[TR1] = "playing", firstRecording = false;    //if the track is recording, play it
-          else if (State[TR1] == "overdubbing") State[TR1] = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            State[TR1] = 'R';
+          }else if (State[TR1] == 'R') State[TR1] = 'P', firstRecording = false;    //if the track is recording, play it
+          else if (State[TR1] == 'O') State[TR1] = 'P', firstRecording = false;    //if the track is overdubbing, play it
           selectedTrack = TR1;    //select the track 1
           doublePressClear = false;
           time = millis();
@@ -225,13 +227,13 @@ void loop() {
         if (buttonpress == "Track2" && (firstTrack == 1 || firstTrack == 5)){    //if the track 1 button is pressed
           sendNote(0x24);    //send the note
           stopMode = false;
-          if (State[TR2] == "playing" || State[TR2] == "empty" || State[TR2] == "muted"){    //if it's playing, empty or muted, record it
+          if (State[TR2] == 'P' || State[TR2] == 'E' || State[TR2] == 'M'){    //if it's playing, empty or muted, record it
             for (int i = 0; i < 4; i++){
-              if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+              if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
             }
-            State[TR2] = "recording";
-          }else if (State[TR2] == "recording") State[TR2] = "playing", firstRecording = false;    //if the track is recording, play it
-          else if (State[TR2] == ("overdubbing")) State[TR2] = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            State[TR2] = 'R';
+          }else if (State[TR2] == 'R') State[TR2] = 'P', firstRecording = false;    //if the track is recording, play it
+          else if (State[TR2] == ('O')) State[TR2] = 'P', firstRecording = false;    //if the track is overdubbing, play it
           selectedTrack = TR2;    //select the track 1
           doublePressClear = false;
           time = millis();
@@ -239,13 +241,13 @@ void loop() {
         if (buttonpress == "Track3" && (firstTrack == 2 || firstTrack == 5)){    //if the track 1 button is pressed
           sendNote(0x25);    //send the note
           stopMode = false;
-          if (State[TR3] == "playing" || State[TR3] == "empty" || State[TR3] == "muted"){    //if it's playing, empty or muted, record it
+          if (State[TR3] == 'P' || State[TR3] == 'E' || State[TR3] == 'M'){    //if it's playing, empty or muted, record it
             for (int i = 0; i < 4; i++){
-              if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+              if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
             }
-            State[TR3] = "recording";
-          }else if (State[TR3] == "recording") State[TR3] = "playing", firstRecording = false;    //if the track is recording, play it
-          else if (State[TR3] == ("overdubbing")) State[TR3] = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            State[TR3] = 'R';
+          }else if (State[TR3] == 'R') State[TR3] = 'P', firstRecording = false;    //if the track is recording, play it
+          else if (State[TR3] == ('O')) State[TR3] = 'P', firstRecording = false;    //if the track is overdubbing, play it
           selectedTrack = TR3;    //select the track 1
           doublePressClear = false;
           time = millis();
@@ -253,13 +255,13 @@ void loop() {
         if (buttonpress == "Track4" && (firstTrack == 3 || firstTrack == 5)){    //if the track 1 button is pressed
           sendNote(0x26);    //send the note
           stopMode = false;
-          if (State[TR4] == "playing" || State[TR4] == "empty" || State[TR4] == "muted"){    //if it's playing, empty or muted, record it
+          if (State[TR4] == 'P' || State[TR4] == 'E' || State[TR4] == 'M'){    //if it's playing, empty or muted, record it
             for (int i = 0; i < 4; i++){
-              if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+              if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
             }
-            State[TR4] = "recording";
-          }else if (State[TR4] == "recording") State[TR4] = "playing", firstRecording = false;    //if the track is recording, play it
-          else if (State[TR4] == "overdubbing") State[TR4] = "playing", firstRecording = false;    //if the track is overdubbing, play it
+            State[TR4] = 'R';
+          }else if (State[TR4] == 'R') State[TR4] = 'P', firstRecording = false;    //if the track is recording, play it
+          else if (State[TR4] == 'O') State[TR4] = 'P', firstRecording = false;    //if the track is overdubbing, play it
           selectedTrack = TR4;    //select the track 1
           doublePressClear = false;
           time = millis();
@@ -269,71 +271,71 @@ void loop() {
           stopMode = false;
           if (firstRecording){
             if (selectedTrack == TR1){    //if the 1st track is selected and it's the first time recording
-              if (State[TR1] == "playing" || State[TR1] == "empty") State[TR1] = "recording";    //if the track is either empty or playing, record
-              else if (State[TR1] == "recording") State[TR1] = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-              else if (State[TR1] == "overdubbing") State[TR1] = "playing", selectedTrack = TR2;    //if the track is overdubbing, play and select the next track
-              else if (State[TR1] == "muted") State[TR1] = "playing";    //if the track is muted, play it
+              if (State[TR1] == 'P' || State[TR1] == 'E') State[TR1] = 'R';    //if the track is either empty or playing, record
+              else if (State[TR1] == 'R') State[TR1] = 'O', firstRecording = false;    //if the track is recording, overdub
+              else if (State[TR1] == 'O') State[TR1] = 'P', selectedTrack = TR2;    //if the track is overdubbing, play and select the next track
+              else if (State[TR1] == 'M') State[TR1] = 'P';    //if the track is muted, play it
             }
             else if (selectedTrack == TR2){
-              if (State[TR2] == "playing" || State[TR2] == "empty") State[TR2] = "recording";    //if the track is either empty or playing, record
-              else if (State[TR2] == "recording") State[TR2] = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-              else if (State[TR2] == "overdubbing") State[TR2] = "playing", selectedTrack = TR3;    //if the track is overdubbing, play and select the next track
-              else if (State[TR2] == "muted") State[TR2] = "playing";    //if the track is muted, play it
+              if (State[TR2] == 'P' || State[TR2] == 'E') State[TR2] = 'R';    //if the track is either empty or playing, record
+              else if (State[TR2] == 'R') State[TR2] = 'O', firstRecording = false;    //if the track is recording, overdub
+              else if (State[TR2] == 'O') State[TR2] = 'P', selectedTrack = TR3;    //if the track is overdubbing, play and select the next track
+              else if (State[TR2] == 'M') State[TR2] = 'P';    //if the track is muted, play it
             }
             else if (selectedTrack == TR3){    //if the 3rd track is selected and it's the first time recording
-              if (State[TR3] == "playing" || State[TR3] == "empty") State[TR3] = "recording";    //if the track is either empty or playing, record
-              else if (State[TR3] == "recording") State[TR3] = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-              else if (State[TR3] == "overdubbing") State[TR3] = "playing", selectedTrack = TR4;    //if the track is overdubbing, play and select the next track
-              else if (State[TR3] == "muted") State[TR3] = "playing";    //if the track is muted, play it
+              if (State[TR3] == 'P' || State[TR3] == 'E') State[TR3] = 'R';    //if the track is either empty or playing, record
+              else if (State[TR3] == 'R') State[TR3] = 'O', firstRecording = false;    //if the track is recording, overdub
+              else if (State[TR3] == 'O') State[TR3] = 'P', selectedTrack = TR4;    //if the track is overdubbing, play and select the next track
+              else if (State[TR3] == 'M') State[TR3] = 'P';    //if the track is muted, play it
             }
             else if (selectedTrack == TR4){    //if the 3rd track is selected and it's the first time recording
-              if (State[TR4] == "playing" || State[TR4] == "empty") State[TR4] = "recording";    //if the track is either empty or playing, record
-              else if (State[TR4] == "recording") State[TR4] = "overdubbing", firstRecording = false;    //if the track is recording, overdub
-              else if (State[TR4] == "overdubbing") State[TR4] = "playing", selectedTrack = TR1;    //if the track is overdubbing, play and select the next track
-              else if (State[TR4] == "muted") State[TR4] = "playing";    //if the track is muted, play it
+              if (State[TR4] == 'P' || State[TR4] == 'E') State[TR4] = 'R';    //if the track is either empty or playing, record
+              else if (State[TR4] == 'R') State[TR4] = 'O', firstRecording = false;    //if the track is recording, overdub
+              else if (State[TR4] == 'O') State[TR4] = 'P', selectedTrack = TR1;    //if the track is overdubbing, play and select the next track
+              else if (State[TR4] == 'M') State[TR4] = 'P';    //if the track is muted, play it
             }
           }else {
             //if another track is being recorded, stop recording and play it:
             if (selectedTrack == TR1){
-              if (State[TR1] == "playing" || State[TR1] == "empty"){
+              if (State[TR1] == 'P' || State[TR1] == 'E'){
                 for (int i = 0; i < 4; i++){
-                  if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+                  if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
                 }
-                State[TR1] = "overdubbing";   //if it's playing or empty, overdub
-              } else if (State[TR1] == "recording") State[TR1] = "playing", selectedTrack = TR2;    //if the track is recording, play it and select the next track
-              else if (State[TR1] == "overdubbing")  State[TR1] = "playing", selectedTrack = TR2;    //if the track is overdubbing, play and select the next track
-              else if (State[TR1] == "muted") State[TR1] = "recording";    //if the track is muted, record
+                State[TR1] = 'O';   //if it's playing or empty, overdub
+              } else if (State[TR1] == 'R') State[TR1] = 'P', selectedTrack = TR2;    //if the track is recording, play it and select the next track
+              else if (State[TR1] == 'O')  State[TR1] = 'P', selectedTrack = TR2;    //if the track is overdubbing, play and select the next track
+              else if (State[TR1] == 'M') State[TR1] = 'R';    //if the track is muted, record
             }
             else if (selectedTrack == TR2){
-              if (State[TR2] == "playing" || State[TR2] == "empty"){
+              if (State[TR2] == 'P' || State[TR2] == 'E'){
                 for (int i = 0; i < 4; i++){
-                  if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+                  if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
                 }
-                State[TR2] = "overdubbing";   //if it's playing or empty, overdub
-              } else if (State[TR2] == "recording") State[TR2] = "playing", selectedTrack = TR3;    //if the track is recording, play it and select the next track
-              else if (State[TR2] == "overdubbing") State[TR2] = "playing", selectedTrack = TR3;    //if the track is overdubbing, play and select the next track
-              else if (State[TR2] == "muted") State[TR2] = "recording";    //if the track is muted, record
+                State[TR2] = 'O';   //if it's playing or empty, overdub
+              } else if (State[TR2] == 'R') State[TR2] = 'P', selectedTrack = TR3;    //if the track is recording, play it and select the next track
+              else if (State[TR2] == 'O') State[TR2] = 'P', selectedTrack = TR3;    //if the track is overdubbing, play and select the next track
+              else if (State[TR2] == 'M') State[TR2] = 'R';    //if the track is muted, record
             }
             else if (selectedTrack == TR3){
-              if (State[TR3] == "playing" || State[TR3] == "empty"){
+              if (State[TR3] == 'P' || State[TR3] == 'E'){
                 for (int i = 0; i < 4; i++){
-                  if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+                  if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
                 }
-                State[TR3] = "overdubbing";   //if it's playing or empty, overdub
-              } else if (State[TR3] == "recording") State[TR3] = "playing", selectedTrack = TR4;    //if the track is recording, play it and select the next track
-              else if (State[TR3] == "overdubbing") State[TR3] = "playing", selectedTrack = TR4;    //if the track is overdubbing, play and select the next track
-              else if (State[TR3] == "muted") State[TR3] = "recording";    //if the track is muted, record
+                State[TR3] = 'O';   //if it's playing or empty, overdub
+              } else if (State[TR3] == 'R') State[TR3] = 'P', selectedTrack = TR4;    //if the track is recording, play it and select the next track
+              else if (State[TR3] == 'O') State[TR3] = 'P', selectedTrack = TR4;    //if the track is overdubbing, play and select the next track
+              else if (State[TR3] == 'M') State[TR3] = 'R';    //if the track is muted, record
             }
             else if (selectedTrack == TR4){
-              if (State[TR4] == "playing" || State[TR4] == "empty"){
+              if (State[TR4] == 'P' || State[TR4] == 'E'){
                 for (int i = 0; i < 4; i++){
-                  if (State[i] == "recording" || State[i] == "overdubbing") State[i] = "playing"; //if another track is being recorded, stop and play it
+                  if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
                 }
-                State[TR4] = "overdubbing";   //if it's playing or empty, overdub
+                State[TR4] = 'O';   //if it's playing or empty, overdub
               }
-              else if (State[TR4] == "recording") State[TR4] = "playing", selectedTrack = TR1;    //if the track is recording, play it and select the first track
-              else if (State[TR4] == "overdubbing") State[TR4] = "playing", selectedTrack = TR1;    //if the track is overdubbing, play and select the first track
-              else if (State[TR4] == "muted") State[TR4] = "recording";    //if the track is muted, record
+              else if (State[TR4] == 'R') State[TR4] = 'P', selectedTrack = TR1;    //if the track is recording, play it and select the first track
+              else if (State[TR4] == 'O') State[TR4] = 'P', selectedTrack = TR1;    //if the track is overdubbing, play and select the first track
+              else if (State[TR4] == 'M') State[TR4] = 'R';    //if the track is muted, record
             }
           }
           time = millis();
@@ -344,7 +346,7 @@ void loop() {
         if (buttonpress == "Stop"){    //if the Stop button is pressed
           sendNote(0x2A);    //send the note
           for (int i = 0; i < 4; i++){
-            if (State[i] != "empty") State[i] = "muted"; //if another track is being recorded, stop and play it
+            if (State[i] != 'E') State[i] = 'M'; //if another track is being recorded, stop and play it
             PlayedWRecPlay[i] = false;
           }
           stopMode = true;    //make the stopMode variable and mode true
@@ -357,25 +359,25 @@ void loop() {
           if (stopMode) ringPosition = 0;    //if we are in stop mode, make the ring spin from the position 0
           if (!stopModeUsed){    //if stop Mode hasn't been used, just play every track that isn't empty: 
             for (int i = 0; i < 4; i++){
-              if (State[i] != "empty") State[i] = "playing";
-              else if (State[i] == "empty") PlayedWRecPlay[i] = true;
+              if (State[i] != 'E') State[i] = 'P';
+              else if (State[i] == 'E') PlayedWRecPlay[i] = true;
             }
           } else if (!previousPlay && stopModeUsed){    //if stop mode has been used and the previous pressed button isn't RecPlay
             if (!PressedInStop[TR1] && !PressedInStop[TR2] && !PressedInStop[TR3] && !PressedInStop[TR4]){ //if none of the tracks has been pressed in stop, play every track that isn't empty:
               for (int i = 0; i < 4; i++){
-                if (State[i] != "empty") State[i] = "playing";
-                else if (State[i] == "empty") PlayedWRecPlay[i] = true;
+                if (State[i] != 'E') State[i] = 'P';
+                else if (State[i] == 'E') PlayedWRecPlay[i] = true;
               }
             } else {    //if a track has been pressed and it isn't empty, play it
               for (int i = 0; i < 4; i++){
-                if (PressedInStop[i]) State[i] = "playing";
+                if (PressedInStop[i]) State[i] = 'P';
               }
             }
             previousPlay = true;
           } else if (previousPlay && stopModeUsed){    //if the previous pressed button is RecPlay, play every track that is not empty:
             for (int i = 0; i < 4; i++){
-              if (State[i] != "empty") State[i] = "playing";
-              else if (State[i] == "empty") PlayedWRecPlay[i] = true;
+              if (State[i] != 'E') State[i] = 'P';
+              else if (State[i] == 'E') PlayedWRecPlay[i] = true;
             }
             previousPlay = false;
           }
@@ -384,7 +386,7 @@ void loop() {
           time = millis();
         }
         if (stopMode){    //if we are in stop mode
-          if (buttonpress == "Track1" && State[TR1] != "empty"){    //if the track 1 button is pressed and it isn't empty
+          if (buttonpress == "Track1" && State[TR1] != 'E'){    //if the track 1 button is pressed and it isn't empty
             sendNote(0x2C);    //send the note
             if (PressedInStop[TR1]) PressedInStop[TR1] = false;    //toggle between the track being pressed in stop mode and not
             else PressedInStop[TR1] = true;
@@ -392,7 +394,7 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track2" && State[TR2] != "empty"){    //if the track 2 button is pressed and it isn't empty
+          if (buttonpress == "Track2" && State[TR2] != 'E'){    //if the track 2 button is pressed and it isn't empty
             sendNote(0x2D);    //send the note
             if (PressedInStop[TR2]) PressedInStop[TR2] = false;    //toggle between the track being pressed in stop mode and not
             else PressedInStop[TR2] = true;
@@ -400,7 +402,7 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track3" && State[TR3] != "empty"){    //if the track 3 button is pressed and it isn't empty
+          if (buttonpress == "Track3" && State[TR3] != 'E'){    //if the track 3 button is pressed and it isn't empty
             sendNote(0x2E);    //send the note
             if (PressedInStop[TR3]) PressedInStop[TR3] = false;    //toggle between the track being pressed in stop mode and not
             else PressedInStop[TR3] = true;
@@ -408,7 +410,7 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track4" && State[TR4] != "empty"){    //if the track 4 button is pressed and it isn't empty
+          if (buttonpress == "Track4" && State[TR4] != 'E'){    //if the track 4 button is pressed and it isn't empty
             sendNote(0x2F);    //send the note
             if (PressedInStop[TR4]) PressedInStop[TR4] = false;    //toggle between the track being pressed in stop mode and not
             else PressedInStop[TR4] = true;
@@ -417,16 +419,16 @@ void loop() {
             time = millis();
           }
         }else if (!stopMode){    //if we aren't in stop mode
-          if (buttonpress == "Track1" && State[TR1] != "empty"){    //if the track 1 button is pressed and it isn't empty
+          if (buttonpress == "Track1" && State[TR1] != 'E'){    //if the track 1 button is pressed and it isn't empty
             sendNote(0x2C);    //send the note
             //toggle between playing and muted when it was pressed in stop mode:
-            if (PressedInStop[TR1] && State[TR1] == "playing") previousPlay = true, State[TR1] = "muted";
-            else if (PressedInStop[TR1] && State[TR1] == "muted") previousPlay = true, State[TR1] = "playing";
+            if (PressedInStop[TR1] && State[TR1] == 'P') previousPlay = true, State[TR1] = 'M';
+            else if (PressedInStop[TR1] && State[TR1] == 'M') previousPlay = true, State[TR1] = 'P';
             else if (!PressedInStop[TR1]){    //if it wasn't pressed in stop
-              if (State[TR1] == "playing") State[TR1] = "muted";    //and it is playing, mute it
-              else if (State[TR1] == "muted"){    //else if it is muted, play it
+              if (State[TR1] == 'P') State[TR1] = 'M';    //and it is playing, mute it
+              else if (State[TR1] == 'M'){    //else if it is muted, play it
               //reset everything in stopMode:
-                State[TR1] = "playing";
+                State[TR1] = 'P';
                 stopModeUsed = false;
                 for (int i = 0; i < 4; i++){
                   PressedInStop[i] = false;
@@ -437,16 +439,16 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track2" && !firstRecording && State[TR2] != "empty"){    //if the track 2 button is pressed and it isn't empty
+          if (buttonpress == "Track2" && !firstRecording && State[TR2] != 'E'){    //if the track 2 button is pressed and it isn't empty
             sendNote(0x2D);    //send the note
             //toggle between playing and muted when it was pressed in stop mode:
-            if (PressedInStop[TR2] && State[TR2] == "playing") previousPlay = true, State[TR2] = "muted";
-            else if (PressedInStop[TR2] && State[TR2] == "muted") previousPlay = true, State[TR2] = "playing";
+            if (PressedInStop[TR2] && State[TR2] == 'P') previousPlay = true, State[TR2] = 'M';
+            else if (PressedInStop[TR2] && State[TR2] == 'M') previousPlay = true, State[TR2] = 'P';
             else if (!PressedInStop[TR2]){    //if it wasn't pressed in stop
-              if (State[TR2] == "playing") State[TR2] = "muted";    //and it is playing, mute it
-              else if (State[TR2] == "muted"){    //else if it is muted, play it
+              if (State[TR2] == 'P') State[TR2] = 'M';    //and it is playing, mute it
+              else if (State[TR2] == 'M'){    //else if it is muted, play it
               //reset everything in stopMode:
-                State[TR2] = "playing";
+                State[TR2] = 'P';
                 stopModeUsed = false;
                 for (int i = 0; i < 4; i++){
                   PressedInStop[i] = false;
@@ -457,16 +459,16 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track3" && !firstRecording && State[TR3] != "empty"){    //if the track 3 button is pressed and it isn't empty
+          if (buttonpress == "Track3" && !firstRecording && State[TR3] != 'E'){    //if the track 3 button is pressed and it isn't empty
             sendNote(0x2E);    //send the note
             //toggle between playing and muted when it was pressed in stop mode:
-            if (PressedInStop[TR3] && State[TR3] == "playing") previousPlay = true, State[TR3] = "muted";
-            else if (PressedInStop[TR3] && State[TR3] == "muted") previousPlay = true, State[TR3] = "playing";
+            if (PressedInStop[TR3] && State[TR3] == 'P') previousPlay = true, State[TR3] = 'M';
+            else if (PressedInStop[TR3] && State[TR3] == 'M') previousPlay = true, State[TR3] = 'P';
             else if (!PressedInStop[TR3]){    //if it wasn't pressed in stop
-              if (State[TR3] == "playing") State[TR3] = "muted";    //and it is playing, mute it
-              else if (State[TR3] == "muted"){    //else if it is muted, play it
+              if (State[TR3] == 'P') State[TR3] = 'M';    //and it is playing, mute it
+              else if (State[TR3] == 'M'){    //else if it is muted, play it
               //reset everything in stopMode:
-                State[TR3] = "playing";
+                State[TR3] = 'P';
                 stopModeUsed = false;
                 for (int i = 0; i < 4; i++){
                   PressedInStop[i] = false;
@@ -477,16 +479,16 @@ void loop() {
             doublePressClear = false;
             time = millis();
           }
-          if (buttonpress == "Track4" && !firstRecording && State[TR4] != "empty"){    //if the track 4 button is pressed and it isn't empty
+          if (buttonpress == "Track4" && !firstRecording && State[TR4] != 'E'){    //if the track 4 button is pressed and it isn't empty
             sendNote(0x2F);    //send the note
             //toggle between playing and muted when it was pressed in stop mode:
-            if (PressedInStop[TR4] && State[TR4] == "playing") previousPlay = true, State[TR4] = "muted";
-            else if (PressedInStop[TR4] && State[TR4] == "muted") previousPlay = true, State[TR4] = "playing";
+            if (PressedInStop[TR4] && State[TR4] == 'P') previousPlay = true, State[TR4] = 'M';
+            else if (PressedInStop[TR4] && State[TR4] == 'M') previousPlay = true, State[TR4] = 'P';
             else if (!PressedInStop[TR4]){    //if it wasn't pressed in stop
-              if (State[TR4] == "playing") State[TR4] = "muted";    //and it is playing, mute it
-              else if (State[TR4] == "muted"){    //else if it is muted, play it
+              if (State[TR4] == 'P') State[TR4] = 'M';    //and it is playing, mute it
+              else if (State[TR4] == 'M'){    //else if it is muted, play it
               //reset everything in stopMode:
-                State[TR4] = "playing";
+                State[TR4] = 'P';
                 stopModeUsed = false;
                 for (int i = 0; i < 4; i++){
                   PressedInStop[i] = false;
@@ -510,7 +512,7 @@ void loop() {
       if (buttonpress == "Clear" && !doublePressClear){
         if (canClearTrack && !stopMode){    //if we can clear the selected track, do it
           sendNote(0x1E);
-          if (State[selectedTrack] == "playing") State[selectedTrack] = "empty", PlayedWRecPlay[selectedTrack] = false, PressedInStop[selectedTrack] = false;
+          if (State[selectedTrack] == 'P') State[selectedTrack] = 'E', PlayedWRecPlay[selectedTrack] = false, PressedInStop[selectedTrack] = false;
           doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
           previousPlay = false;
         }else if (canClearTrack && stopMode) doublePressClear = true;
@@ -565,8 +567,8 @@ void setLEDs(){
 
   if (digitalRead(clearButton) == LOW){    //turn ON the Clear LED when the button is pressed and the pedal has been used
     if (!firstRecording){
-      if (State[selectedTrack] == "playing") LEDs[clearLED] = CRGB(0,0,255);
-      else if (State[selectedTrack] != "playing" && State[selectedTrack] != "empty") LEDs[clearLED] = CRGB(255,0,0);
+      if (State[selectedTrack] == 'P') LEDs[clearLED] = CRGB(0,0,255);
+      else if (State[selectedTrack] != 'P' && State[selectedTrack] != 'E') LEDs[clearLED] = CRGB(255,0,0);
     } else LEDs[clearLED] = CRGB(255,0,0);
   }
   if (digitalRead(clearButton) == HIGH) LEDs[clearLED] = CRGB(0,0,0);    //turn OFF the Clear LED when the button is NOT pressed
@@ -575,27 +577,27 @@ void setLEDs(){
   else if (digitalRead(X2Button) == LOW && firstRecording) LEDs[X2LED] = CRGB(255,0,0);
   if (digitalRead(X2Button) == HIGH) LEDs[X2LED] = CRGB(0,0,0);    //turn OFF the X2 LED when the button is NOT pressed
 
-  if (State[TR1] == "recording" || State[TR1] == "overdubbing") LEDs[Tr1LED] = CRGB(255,0,0);    //when track 1 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR1] == "playing") LEDs[Tr1LED] = CRGB(0,255,0);    //when track 1 is playing, turn on it's LED, colour green
-  else if (State[TR1] == "muted" || State[TR1] == "empty") LEDs[Tr1LED] = CRGB(0,0,0);    //when track 1 is muted or empty, turn off it's LED
+  if (State[TR1] == 'R' || State[TR1] == 'O') LEDs[Tr1LED] = CRGB(255,0,0);    //when track 1 is recording or overdubing, turn on it's LED, colour red
+  else if (State[TR1] == 'P') LEDs[Tr1LED] = CRGB(0,255,0);    //when track 1 is playing, turn on it's LED, colour green
+  else if (State[TR1] == 'M' || State[TR1] == 'E') LEDs[Tr1LED] = CRGB(0,0,0);    //when track 1 is muted or empty, turn off it's LED
   
-  if (State[TR2] == "recording" || State[TR2] == "overdubbing") LEDs[Tr2LED] = CRGB(255,0,0);    //when track 2 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR2] == "playing") LEDs[Tr2LED] = CRGB(0,255,0);    //when track 2 is playing, turn on it's LED, colour green
-  else if (State[TR2] == "muted" || State[TR2] == "empty") LEDs[Tr2LED] = CRGB(0,0,0);    //when track 2 is muted or empty, turn off it's LED
+  if (State[TR2] == 'R' || State[TR2] == 'O') LEDs[Tr2LED] = CRGB(255,0,0);    //when track 2 is recording or overdubing, turn on it's LED, colour red
+  else if (State[TR2] == 'P') LEDs[Tr2LED] = CRGB(0,255,0);    //when track 2 is playing, turn on it's LED, colour green
+  else if (State[TR2] == 'M' || State[TR2] == 'E') LEDs[Tr2LED] = CRGB(0,0,0);    //when track 2 is muted or empty, turn off it's LED
   
-  if (State[TR3] == "recording" || State[TR3] == "overdubbing") LEDs[Tr3LED] = CRGB(255,0,0);    //when track 3 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR3] == "playing") LEDs[Tr3LED] = CRGB(0,255,0);    //when track 3 is playing, turn on it's LED, colour green
-  else if (State[TR3] == "muted" || State[TR3] == "empty") LEDs[Tr3LED] = CRGB(0,0,0);    //when track 3 is muted or empty, turn off it's LED
+  if (State[TR3] == 'R' || State[TR3] == 'O') LEDs[Tr3LED] = CRGB(255,0,0);    //when track 3 is recording or overdubing, turn on it's LED, colour red
+  else if (State[TR3] == 'P') LEDs[Tr3LED] = CRGB(0,255,0);    //when track 3 is playing, turn on it's LED, colour green
+  else if (State[TR3] == 'M' || State[TR3] == 'E') LEDs[Tr3LED] = CRGB(0,0,0);    //when track 3 is muted or empty, turn off it's LED
   
-  if (State[TR4] == "recording" || State[TR4] == "overdubbing") LEDs[Tr4LED] = CRGB(255,0,0);    //when track 4 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR4] == "playing") LEDs[Tr4LED] = CRGB(0,255,0);    //when track 4 is playing, turn on it's LED, colour green
-  else if (State[TR4] == "muted" || State[TR4] == "empty") LEDs[Tr4LED] = CRGB(0,0,0);    //when track 4 is muted or empty, turn off it's LED
+  if (State[TR4] == 'R' || State[TR4] == 'O') LEDs[Tr4LED] = CRGB(255,0,0);    //when track 4 is recording or overdubing, turn on it's LED, colour red
+  else if (State[TR4] == 'P') LEDs[Tr4LED] = CRGB(0,255,0);    //when track 4 is playing, turn on it's LED, colour green
+  else if (State[TR4] == 'M' || State[TR4] == 'E') LEDs[Tr4LED] = CRGB(0,0,0);    //when track 4 is muted or empty, turn off it's LED
 
   //the setHue variable sets the LED Ring's colour. 0 is red, 60 is yellow(ish), 96 is green.
-  if ((State[TR1] == "recording" || State[TR2] == "recording" || State[TR3] == "recording" || State[TR4] == "recording") && firstRecording) setHue = 0;    //sets the led ring to red (recording)
-  else if ((State[TR1] == "recording" || State[TR2] == "recording" || State[TR3] == "recording" || State[TR4] == "recording") && !firstRecording) setHue = 60;    //sets the led ring to yellow (overdubbing)
-  else if (State[TR1] == "overdubbing" || State[TR2] == "overdubbing" || State[TR3] == "overdubbing" || State[TR4] == "overdubbing") setHue = 60;    //sets the led ring to yellow (overdubbing)
-  else if (((State[TR1] == "muted" || State[TR1] == "empty") && (State[TR2] == "muted" || State[TR2] == "empty") && (State[TR3] == "muted" || State[TR3] == "empty") && (State[TR4] == "muted" || State[TR4] == "empty")) && !firstRecording && !PlayedWRecPlay[TR1] && !PlayedWRecPlay[TR2] && !PlayedWRecPlay[TR3] && !PlayedWRecPlay[TR4]) stopMode = true;    //stop the spinning ring animation when all tracks are muted
+  if ((State[TR1] == 'R' || State[TR2] == 'R' || State[TR3] == 'R' || State[TR4] == 'R') && firstRecording) setHue = 0;    //sets the led ring to red (recording)
+  else if ((State[TR1] == 'R' || State[TR2] == 'R' || State[TR3] == 'R' || State[TR4] == 'R') && !firstRecording) setHue = 60;    //sets the led ring to yellow (overdubbing)
+  else if (State[TR1] == 'O' || State[TR2] == 'O' || State[TR3] == 'O' || State[TR4] == 'O') setHue = 60;    //sets the led ring to yellow (overdubbing)
+  else if (((State[TR1] == 'M' || State[TR1] == 'E') && (State[TR2] == 'M' || State[TR2] == 'E') && (State[TR3] == 'M' || State[TR3] == 'E') && (State[TR4] == 'M' || State[TR4] == 'E')) && !firstRecording && !PlayedWRecPlay[TR1] && !PlayedWRecPlay[TR2] && !PlayedWRecPlay[TR3] && !PlayedWRecPlay[TR4]) stopMode = true;    //stop the spinning ring animation when all tracks are muted
   else setHue = 96;    //sets the led ring to green (playing)
   
   FastLED.show();    //updates the led states
@@ -605,7 +607,7 @@ void reset(){    //function to reset the pedal
   sendNote(0x1F);    //sends note that resets Mobius
   //empties the tracks:
   for (int i = 0; i < 4; i++){
-    State[i] = "empty";
+    State[i] = 'E';
     PressedInStop[i] = false;
     PlayedWRecPlay[i] = false;
   }

@@ -109,7 +109,6 @@ void setup() {
   pinMode(track4Button, INPUT_PULLUP);
   pinMode(clearButton, INPUT_PULLUP);
   pinMode(X2Button, INPUT_PULLUP);
-  pinMode(potPin, INPUT);    //declaring potentiometer as INPUT
   pinMode(clockPin, INPUT_PULLUP);
   pinMode(dataPin, INPUT_PULLUP);
   pinMode(swPin, INPUT_PULLUP);
@@ -735,47 +734,11 @@ void reset(){    //function to reset the pedal
 }
 
 void startLEDs(){    //animation to show the pedal has been reset
-  for (int i = 0; i < 3; i++){    //turns on and off every led 3 times in red
-    LEDs[0] = CRGB(255,0,0);
-    LEDs[1] = CRGB(255,0,0);
-    LEDs[2] = CRGB(255,0,0);
-    LEDs[3] = CRGB(255,0,0);
-    LEDs[4] = CRGB(255,0,0);
-    LEDs[5] = CRGB(255,0,0);
-    LEDs[6] = CRGB(255,0,0);
-    LEDs[7] = CRGB(255,0,0);
-    LEDs[8] = CRGB(255,0,0);
-    LEDs[9] = CRGB(255,0,0);
-    LEDs[10] = CRGB(255,0,0);
-    LEDs[11] = CRGB(255,0,0);
-    LEDs[12] = CRGB(255,0,0);
-    LEDs[13] = CRGB(255,0,0);
-    LEDs[14] = CRGB(255,0,0);
-    LEDs[15] = CRGB(255,0,0);
-    LEDs[16] = CRGB(255,0,0);
-    LEDs[17] = CRGB(255,0,0);
-    LEDs[18] = CRGB(255,0,0);
+  for (int i = 0; i < 3; i++){
+    fill_solid(LEDs, qtyLEDs, CRGB::Red);
     FastLED.show();
     delay(150);
-    LEDs[0] = CRGB(0,0,0);
-    LEDs[1] = CRGB(0,0,0);
-    LEDs[2] = CRGB(0,0,0);
-    LEDs[3] = CRGB(0,0,0);
-    LEDs[4] = CRGB(0,0,0);
-    LEDs[5] = CRGB(0,0,0);
-    LEDs[6] = CRGB(0,0,0);
-    LEDs[7] = CRGB(0,0,0);
-    LEDs[8] = CRGB(0,0,0);
-    LEDs[9] = CRGB(0,0,0);
-    LEDs[10] = CRGB(0,0,0);
-    LEDs[11] = CRGB(0,0,0);
-    LEDs[12] = CRGB(0,0,0);
-    LEDs[13] = CRGB(0,0,0);
-    LEDs[14] = CRGB(0,0,0);
-    LEDs[15] = CRGB(0,0,0);
-    LEDs[16] = CRGB(0,0,0);
-    LEDs[17] = CRGB(0,0,0);
-    LEDs[18] = CRGB(0,0,0);
+    FastLED.clear();
     FastLED.show();
     delay(150);
   }

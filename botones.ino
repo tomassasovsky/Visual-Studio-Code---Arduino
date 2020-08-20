@@ -26,4 +26,5 @@ void loop(){
     }
   }
   digitalWrite(LED_BUILTIN, stateLED);
+  lastbuttonpress = buttonpress;
 }

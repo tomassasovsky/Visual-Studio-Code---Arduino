@@ -28,5 +28,7 @@
         "activityBar.background": "#212121",
         "titleBar.activeBackground": "#212121",
         "titleBar.activeForeground": "#FEFCFE"
-    }
+    },
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }

@@ -23,7 +23,6 @@ CRGB LEDs[qtyLEDs];
 #define clearButton 11
 #define X2Button 12
 #define nonRingLEDs 7
-#define potPin A0
 
 unsigned int vol[4] = {127, 127, 127, 127};
 
@@ -33,9 +32,6 @@ unsigned int vol[4] = {127, 127, 127, 127};
 
 unsigned int lastState;
 unsigned int state;
-
-unsigned int potVal = 0;         //current pot value
-unsigned int lastPotVal = 0;     //previous pot value
 
 int redOn;
 
@@ -53,8 +49,6 @@ String State[4] = {"empty", "empty", "empty", "empty"};
 #define TR2 1
 #define TR3 2
 #define TR4 3
-
-int myStartLEDs[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
 
 /*
 when Rec/Play is pressed in Play Mode, every track gets played, no matter if they are empty or not.
@@ -115,7 +109,6 @@ void setup() {
   pinMode(clockPin, INPUT_PULLUP);
   pinMode(dataPin, INPUT_PULLUP);
   pinMode(swPin, INPUT_PULLUP);
-  pinMode(potPin, INPUT);
   lastState = digitalRead(clockPin);
   sendNote(0x1F);    //resets the pedal
   sendNote(0x2B);    //gets into Record Mode
@@ -525,7 +518,7 @@ void loop() {
       }
     }
   }
-  /*if (state != lastState){
+  if (state != lastState){
     if (digitalRead(dataPin) != state){
       vol[selectedTrack]++;
       volumeChanging = true;
@@ -538,18 +531,6 @@ void loop() {
 
   lastState = state;
   if (volumeChanging) sendVolume();
-  */
-  potVal = analogRead(potPin); // Divide by 8 to get range of 0-127 for midi
-  unsigned int diffPot = abs(lastPotVal - potVal);
-  
-  if (diffPot > 30){// If the value does not = the last value the following command is made. This is because the pot has been turned. Otherwise the pot remains the same and no midi message is output.
-    lastPotVal = potVal;
-    if (potVal/8 > 123) potVal = 1023;
-    if (potVal < 40) potVal = 0;
-    Serial.write(176);  //176 = CC Command
-    Serial.write(1); //2 = Which Control
-    Serial.write(potVal/8); // Value read from potentiometer
-  }
 }
 
 void sendNote(int pitch){
@@ -624,11 +605,15 @@ void reset(){    //function to reset the pedal
 }
 
 void startLEDs(){    //animation to show the pedal has been reset
-  for (int i = 0; i < 3; i++){
-    fill_solid(LEDs, qtyLEDs, CRGB::Red);
+  for (int i = 0; i < 3; i++){    //turns on and off every led 3 times in red
+    for (int j = 0; j < 18; i++){
+      LEDs[j] = CRGB(255,0,0);
+    }
     FastLED.show();
     delay(150);
-    FastLED.clear();
+    for (int y = 0; y < 18; y++){
+      LEDs[y] = CRGB(0,0,0);
+    }
     FastLED.show();
     delay(150);
   }
