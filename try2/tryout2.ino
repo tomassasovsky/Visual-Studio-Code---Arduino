@@ -1,6 +1,3 @@
-// TODO Change the potentiometer for a rotary encoder (almost done)
-// TODO: Add variables for the potentiometer value for each track (done)
-// TODO: Configure the encoder switch to toggle between tracks (select the next track) (i think it works)
 // TODO: Add message confirmation for MIDI signals with the MIDI Read function (MIDI Library) (not even close)
 //! TODO: Finish fixing the FocusLock bugs (far away)
 
@@ -9,6 +6,14 @@
 #define pinLEDs 2
 #define qtyLEDs 19
 #define typeOfLEDs WS2812B    //type of LEDs i'm using
+#define nonRingLEDs 7
+#define modeLED 12
+#define Tr1LED 13
+#define Tr2LED 14
+#define Tr3LED 15
+#define Tr4LED 16
+#define clearLED 17
+#define X2LED 18
 CRGB LEDs[qtyLEDs]; 
 
 // PINS FOR BUTTONS
@@ -22,24 +27,20 @@ CRGB LEDs[qtyLEDs];
 #define track4Button 10
 #define clearButton 11
 #define X2Button 12
-#define nonRingLEDs 7
-#define potPin A0
+//#define potPin A0
 
-unsigned int vol[4] = {127, 127, 127, 127};
-
-#define clockPin A0
-#define dataPin A1
+#define dataPin A0
+#define clockPin A1
 #define swPin A2
 
 unsigned int lastState;
 unsigned int state;
-
-unsigned int potVal = 0;         //current pot value
-unsigned int lastPotVal = 0;     //previous pot value
-
-int redOn;
+unsigned int vol[4] = {127, 127, 127, 127};
 
 bool volumeChanging = false;
+
+//unsigned int potVal = 0;         //current pot value
+//unsigned int lastPotVal = 0;     //previous pot Value
 
 bool playMode = LOW;    //LOW = Rec mode, HIGH = Play Mode
 long time = 0;    //the last time the output pin was toggled
@@ -49,6 +50,7 @@ long time2 = 0;
 
 char State[4] = {'E', 'E', 'E', 'E'};
 
+//the next tags are to make it simpler to select a track when used in a function
 #define TR1 0
 #define TR2 1
 #define TR3 2
@@ -68,19 +70,18 @@ likewise, when the button Stop is pressed, every track gets muted, so every one 
 */
 bool PlayedWRecPlay[4] = {false, false, false, false};
 bool PressedInStop[4] = {false, false, false, false};    //when a track is pressed-in-stop, it gets focuslocked
-bool previousPlay = false;    //this variable is for when the stop mode has been used and RecPlay is pressed twice
-bool canStopTrack;
+bool previousPlay = false;    //this variable is for when the stop mode has been used and RecPlay is pressed twice. Basically, if the focuslock function is active in any of the tracks, when pressed once, the focuslocked ones get played. If it gets pressed again, every track gets played
+bool canStopTrack;  
+
 /*
 Selected track, to record on it without having to press the individual track.
 Plus, if you record using the RecPlayButton, you will also overdub, unlike pressing the track button, 
 which would only record and then play (no overdub).
 */
 
-int selectedTrack = TR1;
-
-//the firstTrack variable is for when you start recording but the time is not set in Mobius, so that you cant start recording on another track until the first is played.
-int firstTrack;
-bool firstRecording = true;
+int selectedTrack = TR1;    //this variable is to keep constant track of the selected track
+int firstTrack;    //the firstTrack variable is for when you start recording but the time is not set in Mobius, so that you cant start recording on another track until the first is played.
+bool firstRecording = true;    //this track is only true when the pedal has not been used to record yet.
 bool stopMode = false;
 bool stopModeUsed = false;
 bool canClearTrack;
@@ -88,17 +89,8 @@ bool doublePressClear = false;
 
 String buttonpress = "";    //To store the button pressed at the time
 String lastbuttonpress = "";    //To store the previous button pressed
+
 #define midichannel 0x90
-
-#define modeLED 12
-#define Tr1LED 13
-#define Tr2LED 14
-#define Tr3LED 15
-#define Tr4LED 16
-#define clearLED 17
-#define X2LED 18
-
-
 
 void setup() {
   //Serial.begin(38400);    //to use LoopMIDI and Hairless MIDI Serial
@@ -114,10 +106,9 @@ void setup() {
   pinMode(track4Button, INPUT_PULLUP);
   pinMode(clearButton, INPUT_PULLUP);
   pinMode(X2Button, INPUT_PULLUP);
-  pinMode(clockPin, INPUT_PULLUP);
   pinMode(dataPin, INPUT_PULLUP);
+  pinMode(clockPin, INPUT_PULLUP);
   pinMode(swPin, INPUT_PULLUP);
-  pinMode(potPin, INPUT);
   lastState = digitalRead(clockPin);
   sendNote(0x1F);    //resets the pedal
   sendNote(0x2B);    //gets into Record Mode
@@ -127,7 +118,6 @@ void setup() {
 
 void loop() {
   buttonpress = "released";   //release the variable buttonpress every time the void loops
-  
   if ((State[TR1] != 'E' || State[TR2] != 'E' || State[TR3] != 'E' || State[TR4] != 'E') && !stopMode) ringLEDs();    //the led ring spins when the pedal is recording, overdubbing or playing.
   if ((State[selectedTrack] == 'R' || State[selectedTrack] == 'O') && firstRecording) canStopTrack = false;
   else canStopTrack = true;    //you can only clear the selected track and change between modes when you are not recording for the first time.
@@ -141,8 +131,6 @@ void loop() {
   if (State[selectedTrack] == 'R' && firstRecording) firstTrack = selectedTrack;
   else firstTrack = 5;
 
-  state = digitalRead(dataPin);
-  
   // set the variable buttonpress to a recognizable name when a button is pressed:
   if (digitalRead(recPlayButton) == LOW) buttonpress = "RecPlay";
   if (digitalRead(stopButton) == LOW) buttonpress = "Stop";
@@ -187,8 +175,8 @@ void loop() {
         previousPlay = false;
         time = millis();
       }
-      if (buttonpress == "NextTrack" && selectedTrack != TR4) selectedTrack++;
-      else if (buttonpress == "NextTrack" && selectedTrack == TR4) selectedTrack = TR1;
+      if (buttonpress == "NextTrack" && selectedTrack < TR4 && canStopTrack) selectedTrack++, sendNote(0x32), time = millis();
+      else if (buttonpress == "NextTrack" && selectedTrack == TR4 && canStopTrack) selectedTrack = TR1, sendNote(0x32), time = millis();
       if (buttonpress == "X2") {
         if ((State[selectedTrack] == 'P' || State[selectedTrack] == 'M' || State[selectedTrack] == 'E') && !firstRecording) {
           sendNote(0x20);
@@ -527,8 +515,9 @@ void loop() {
       }
     }
   }
-  /*if (state != lastState){
-    if (digitalRead(dataPin) != state){
+  state = digitalRead(clockPin);
+  if (state != lastState){
+    if (digitalRead(dPin) != state){
       vol[selectedTrack]++;
       volumeChanging = true;
     }
@@ -537,21 +526,9 @@ void loop() {
       volumeChanging = true;
     }
   } else volumeChanging = false;
-
-  lastState = state;
   if (volumeChanging) sendVolume();
-  */
-  potVal = analogRead(potPin); // Divide by 8 to get range of 0-127 for midi
-  unsigned int diffPot = abs(lastPotVal - potVal);
+  lastState = state;
   
-  if (diffPot > 30){// If the value does not = the last value the following command is made. This is because the pot has been turned. Otherwise the pot remains the same and no midi message is output.
-    lastPotVal = potVal;
-    if (potVal/8 > 123) potVal = 1023;
-    if (potVal < 40) potVal = 0;
-    Serial.write(176);  //176 = CC Command
-    Serial.write(1); //2 = Which Control
-    Serial.write(potVal/8); // Value read from potentiometer
-  }
 }
 
 void sendNote(int pitch){
@@ -640,12 +617,18 @@ void startLEDs(){    //animation to show the pedal has been reset
 void ringLEDs(){    //function that makes the spinning animation for the led ring
   FastLED.setBrightness(255);
   EVERY_N_MILLISECONDS(ringSpeed){    //this gets an entire spin in 3/4 of a second (0.75s) Half a second would be 31.25, a second would be 62.5
-    fadeToBlackBy(LEDs, qtyLEDs - nonRingLEDs, 70);    //Dims the LEDs by 64/256 (1/4) and thus sets the trail's length. Also set limit to the ring LEDs quantity and exclude the mode and track ones (qtyLEDs-7)
+    fadeToBlackBy(LEDs, qtyLEDs - nonRingLEDs, 70); //Dims the LEDs by 64/256 (1/4) and thus sets the trail's length. Also set limit to the ring LEDs quantity and exclude the mode and track ones (qtyLEDs-7)
     LEDs[ringPosition] = CHSV(setHue, 255, 255);    //Sets the LED's hue according to the potentiometer rotation    
     ringPosition++;    //Shifts all LEDs one step in the currently active direction    
     if (ringPosition == qtyLEDs - nonRingLEDs) ringPosition = 0;    //If one end is reached, reset the position to loop around
     FastLED.show();    //Finally, display all LED's data (illuminate the LED ring)
   }
+}
+
+void resetVolume(){
+  Serial.write(176);    //176 = CC Command
+  Serial.write(5);    // Which value: if the selected Track is 1, the value sent will be 1; If it's 2, the value 2 will be sent and so on.
+  Serial.write(127);
 }
 
 void sendVolume(){

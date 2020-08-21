@@ -2,5 +2,5 @@
     "board": "arduino:avr:uno",
     "port": "COM7",
     "programmer": "AVRISP mkII",
-    "sketch": "try2/tryout2.ino"
+    "sketch": "MML_TomasSasovsky/MML_TomasSasovsky.ino"
 }
