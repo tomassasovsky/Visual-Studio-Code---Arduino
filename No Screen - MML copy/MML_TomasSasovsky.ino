@@ -1,3 +1,7 @@
+/*
+Tomás Sasovsky 23 - 09 - 2020
+*/
+
 #include <FastLED.h>    //library for controlling the LEDs
 #include <EEPROM.h>    //Library to store the potentiometer values
 #define DEBOUNCE 10  // how many ms to debounce, 5+ ms is usually plenty
@@ -11,8 +15,8 @@ byte previous_keystate[NUMBUTTONS], current_keystate[NUMBUTTONS];
 byte lastPressed;
 
 #define pinLEDs 2
-#define dataPin A0
-#define clockPin A1
+#define dataPin A1
+#define clockPin A0
 #define swPin A2
 #define qtyLEDs 19
 #define typeOfLEDs WS2812B    //type of LEDs i'm using
@@ -28,13 +32,17 @@ CRGB LEDs[qtyLEDs];
 
 int lastState;
 int state;
-unsigned int counterLEDs = 0;
+byte counterLEDs = 0;
 byte vol[4];
 
+unsigned long time = 0;    //the last time the output pin was toggled
 unsigned long timeClear = 0;
+unsigned long lastClear = 0;
 unsigned long timeVolume = 0;
 unsigned long timeSleepMode = 0;
 unsigned long lastLEDsMillis = 0;
+unsigned long previousBreathe = 0;
+#define debounceTime 150    //the debounce time, increase if the output flickers
 #define doublePressClearTime 750
 
 char State[4] = {'E', 'E', 'E', 'E'};
@@ -45,8 +53,12 @@ char State[4] = {'E', 'E', 'E', 'E'};
 #define TR3 2
 #define TR4 3
 
+// constants for min and max PWM
+#define minBrightness 15
+#define maxBrightness 240
+
 byte ringPosition = 0;  //the led ring has 12 leds. This variable is to set the position in which the first lit led is during the animation.
-int setRingColour = 0;    //yellow is 35/50 = 45, red is 0, green is 96
+byte setRingColour = 0;    //yellow is 35/50 = 45, red is 0, green is 96
 #define ringSpeed  54.6875    //46.875 62.5
 
 /*
@@ -65,7 +77,11 @@ which would only record and then play (no overdub).
 */
 
 byte selectedTrack = TR1;    //this variable is to keep constant track of the selected track
+byte selectedTrackLED;
 byte firstRecordedTrack;    //the firstRecordedTrack variable is for when you start recording but the time is not set in Mobius, so that you cant start recording on another track until the first is played.
+byte fadeValue = 100;
+unsigned int x2timesPressed = 1;
+bool x2pressed = false;
 bool firstRecording = true;    //this track is only true when the pedal has not been used to record yet.
 bool stopMode = false;
 bool stopModeUsed = false;
@@ -74,21 +90,30 @@ bool sleepMode = false;
 bool startLEDsDone = false;
 bool doublePressClear = false;
 bool doublePressPlay = false;
+bool fadeDirection = true;    //State Variable for Fade Direction
 
 #define midichannel 0x90
 
 void setup() {
   Serial.begin(31250);    //to use only the Arduino UNO (Atmega16u2). You must upload another bootloader to use it as a native MIDI-USB device.
   FastLED.addLeds<typeOfLEDs, pinLEDs, GRB>(LEDs, qtyLEDs);    //declare LEDs
-  for (byte i = 0; i < 4; i++) vol[i] = EEPROM.read(i);
   for (byte i = 0; i < NUMBUTTONS; i++) pinMode(buttons[i], INPUT_PULLUP);
   pinMode(dataPin, INPUT_PULLUP);
   pinMode(clockPin, INPUT_PULLUP);
   pinMode(swPin, INPUT_PULLUP);
+  pinMode(A3, INPUT_PULLUP);
+  for (byte i = 0; i < 4; i++) vol[i] = min(vol[i], 127);
+  if (digitalRead(A3) == LOW) {
+    for (byte i = 0; i < 4; i++) EEPROM.write(i, 127);
+  }
+  for (byte i = 0; i < 4; i++){
+    if(EEPROM.read(i) < 128) vol[i] = EEPROM.read(i);
+    else vol[i] = 127;
+  }
   selectedTrack = min(selectedTrack, 3);
+  x2timesPressed = min(x2timesPressed, 256);
   lastState = digitalRead(clockPin);
   sendNote(0x1F);    //resets the pedal
-  muteAllInputsButSelected();
 }
 
 void loop() {
@@ -108,91 +133,107 @@ void loop() {
   if (millis() - timeVolume > 3000){
     if (firstRecording){
       sendAllVolumes();
-      muteAllInputsButSelected();
       timeVolume = millis();
     }
   }
 
-  if (millis() - timeSleepMode > 180000) {
+  if (millis() - timeSleepMode > 600000) { //15000
     if (firstRecording && State[TR1] == 'E' && State[TR2] == 'E' && State[TR3] == 'E' && State[TR4] == 'E') {
       sleepMode = true;
       timeSleepMode = millis();
     }
   }
 
-  switch(pressedButton()) {
-    case 0:
-      if (sleepMode) resetSleepMode();
-      else if (!playMode) RecPlay();   //if the Rec/Play button is pressed
-      else playRecPlay();
-      doublePressClear = false;
-      doublePressPlay = true;
-    break;
-    case 1:
-      if (sleepMode) resetSleepMode();
-      else if (!playMode) recModeStop();
-      else playModeStop();
-      doublePressClear = false;
-      doublePressPlay = false;
-      lastPressed = 1;
-    break;
-    case 2:
-      if (sleepMode) resetSleepMode();
-      else if (canChangeModeOrClearTrack()) undoButton();
-      doublePressClear = false;
-      doublePressPlay = false;
-      lastPressed = 2;
-    break;
-    case 3:
-      if (sleepMode) resetSleepMode();
-      else modeButton();
-      doublePressClear = false;
-      doublePressPlay = false;
-      lastPressed = 3;
-    break;
-    case 4:
-      if (sleepMode) resetSleepMode();
-      else pressedTrack(TR1);
-      doublePressClear = false;
-      lastPressed = 4;
-    break;
-    case 5:
-      if (sleepMode) resetSleepMode();
-      else pressedTrack(TR2);
-      doublePressClear = false;
-      lastPressed = 5;
-    break;
-    case 6:
-      if (sleepMode) resetSleepMode();
-      else pressedTrack(TR3);
-      doublePressClear = false;
-      lastPressed = 6;
-    break;
-    case 7:
-      if (sleepMode) resetSleepMode();
-      else pressedTrack(TR4);
-      doublePressClear = false;
-      lastPressed = 7;
-    break;
-    case 9:
-      if (sleepMode) resetSleepMode();
-      else X2Button();
-      doublePressClear = false;
-      doublePressPlay = false;
-      lastPressed = 9;
-    break;
-    case 10:
-      if (sleepMode) resetSleepMode();
-      else if (canChangeModeOrClearTrack() && !stopMode) nextTrack();
-      doublePressClear = false;
-      doublePressPlay = false;
-      lastPressed = 10;
-    break;
-    case 11:
-      lastPressed = 11;
-    break;
+  if (millis() - time > debounceTime){    //debounce for the buttons (ill have to get rid of this, but first i need to work on the pc program)
+    switch(pressedButton()) {
+      case 0:
+        if (sleepMode) resetSleepMode();
+        else if (!playMode) RecPlay();   //if the Rec/Play button is pressed
+        else playRecPlay();
+        doublePressClear = false;
+        time = millis();
+        break;
+      case 1:
+        if (sleepMode) resetSleepMode();
+        else if (!playMode) recModeStop();
+        else playModeStop();
+        doublePressClear = false;
+        doublePressPlay = false;
+        lastPressed = 1;
+        time = millis();
+        break;
+      case 2:
+        if (sleepMode) resetSleepMode();
+        else if (canChangeModeOrClearTrack()) undoButton();
+        doublePressClear = false;
+        lastPressed = 2;
+        time = millis();
+        break;
+      case 3:
+        if (sleepMode) resetSleepMode();
+        else modeButton();
+        doublePressClear = false;
+        doublePressPlay = false;
+        lastPressed = 3;
+        time = millis();
+        break;
+      case 4:
+        if (sleepMode) resetSleepMode();
+        else pressedTrack(TR1);
+        doublePressClear = false;
+        lastPressed = 4;
+        time = millis();
+        break;
+      case 5:
+        if (sleepMode) resetSleepMode();
+        else pressedTrack(TR2);
+        doublePressClear = false;
+        lastPressed = 5;
+        time = millis();
+        break;
+      case 6:
+        if (sleepMode) resetSleepMode();
+        else pressedTrack(TR3);
+        doublePressClear = false;
+        lastPressed = 6;
+        time = millis();
+        break;
+      case 7:
+        if (sleepMode) resetSleepMode();
+        else pressedTrack(TR4);
+        doublePressClear = false;
+        lastPressed = 7;
+        time = millis();
+        break;
+      case 8:
+        if (sleepMode) resetSleepMode();
+        else clearButton();
+        break;
+      case 9:
+        if (sleepMode) resetSleepMode();
+        else X2Button();
+        doublePressClear = false;
+        doublePressPlay = false;
+        lastPressed = 9;
+        time = millis();
+        break;
+      case 10:
+        if (sleepMode) resetSleepMode();
+        else if (canChangeModeOrClearTrack() && !stopMode) nextTrack();
+        doublePressClear = false;
+        doublePressPlay = false;
+        lastPressed = 10;
+        time = millis();
+        break;
+      case 11:
+        lastPressed = 11;
+        time = millis();
+        break;
+      default:
+        break;
+    }
+    resetButton();
   }
-  clearButton();
   rotaryEncoder();
 }
 
@@ -239,54 +280,69 @@ void sendNote(int note){
   Serial.write(0x45);    //medium velocity = Note ON
 }
 void setLEDs(){
-  if (digitalRead(11) == LOW){    //turn ON the Clear LED when the button is pressed and the pedal has been used
-    if (!firstRecording){
-      if (!stopModeUsed && !stopMode) {
-        if (State[selectedTrack] == 'P' || State[selectedTrack] == 'E') LEDs[clearLED] = CRGB(0,0,255);
-        else if (State[selectedTrack] != 'P' && State[selectedTrack] != 'E') LEDs[clearLED] = CRGB(255,0,0);
-      } else LEDs[clearLED] = CRGB(255,0,0);
-    } else LEDs[clearLED] = CRGB(255,0,0);
-  } else LEDs[clearLED] = CRGB(0,0,0);    //turn OFF the Clear LED when the button is NOT pressed
-  
-  if (digitalRead(12) == LOW) {
-    if (!stopModeUsed && !stopMode) {
-      if (State[selectedTrack] != 'R' && State[selectedTrack] != 'O' && !firstRecording) LEDs[X2LED] = CRGB(0,0,255);    //turn ON the X2 LED when the button is pressed and the pedal has been used
-      else LEDs[X2LED] = CRGB(255,0,0);
-    } else LEDs[X2LED] = CRGB(255,0,0);
-  } else LEDs[X2LED] = CRGB(0,0,0);    //turn OFF the X2 LED when the button is NOT pressed
-  
-  if (!sleepMode) {
-    if (!playMode) LEDs[modeLED] = CRGB(255,0,0);    //when we are in Record mode, the LED is red
-    else LEDs[modeLED] = CRGB(0,255,0);    //when we are in Play mode, the LED is green
-  } else LEDs[modeLED] = CRGB(0,0,0);    //when we are in sleep mode
+  switch (selectedTrack) {
+    case TR1: 
+      selectedTrackLED = Tr1LED;
+      break;
+    case TR2: 
+      selectedTrackLED = Tr2LED;
+      break;
+    case TR3:
+      selectedTrackLED = Tr3LED;
+      break;
+    case TR4:
+      selectedTrackLED = Tr4LED;
+      break;
+    default:
+      break;
+  }
 
-  if (State[TR1] == 'R' || State[TR1] == 'O') LEDs[Tr1LED] = CRGB(255,0,0);    //when track 1 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR1] == 'P') LEDs[Tr1LED] = CRGB(0,255,0);    //when track 1 is playing, turn on it's LED, colour green
+  if (digitalRead(11) == HIGH) LEDs[clearLED] = CRGB(0,0,0);    //turn OFF the Clear LED when the button is NOT pressed
+  if (digitalRead(12) == HIGH) LEDs[X2LED] = CRGB(0,0,0);    //turn OFF the X2 LED when the button is NOT pressed
+  
+  if (State[TR1] == 'P') LEDs[Tr1LED] = CRGB(0,200,0);    //when track 1 is playing, turn on it's LED, colour green
   else if (State[TR1] == 'M' || State[TR1] == 'E') LEDs[Tr1LED] = CRGB(0,0,0);    //when track 1 is muted or empty, turn off it's LED
   
-  if (State[TR2] == 'R' || State[TR2] == 'O') LEDs[Tr2LED] = CRGB(255,0,0);    //when track 2 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR2] == 'P') LEDs[Tr2LED] = CRGB(0,255,0);    //when track 2 is playing, turn on it's LED, colour green
+  if (State[TR2] == 'P') LEDs[Tr2LED] = CRGB(0,200,0);    //when track 2 is playing, turn on it's LED, colour green
   else if (State[TR2] == 'M' || State[TR2] == 'E') LEDs[Tr2LED] = CRGB(0,0,0);    //when track 2 is muted or empty, turn off it's LED
   
-  if (State[TR3] == 'R' || State[TR3] == 'O') LEDs[Tr3LED] = CRGB(255,0,0);    //when track 3 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR3] == 'P') LEDs[Tr3LED] = CRGB(0,255,0);    //when track 3 is playing, turn on it's LED, colour green
+  if (State[TR3] == 'P') LEDs[Tr3LED] = CRGB(0,200,0);    //when track 3 is playing, turn on it's LED, colour green
   else if (State[TR3] == 'M' || State[TR3] == 'E') LEDs[Tr3LED] = CRGB(0,0,0);    //when track 3 is muted or empty, turn off it's LED
   
-  if (State[TR4] == 'R' || State[TR4] == 'O') LEDs[Tr4LED] = CRGB(255,0,0);    //when track 4 is recording or overdubing, turn on it's LED, colour red
-  else if (State[TR4] == 'P') LEDs[Tr4LED] = CRGB(0,255,0);    //when track 4 is playing, turn on it's LED, colour green
+  if (State[TR4] == 'P') LEDs[Tr4LED] = CRGB(0,200,0);    //when track 4 is playing, turn on it's LED, colour green
   else if (State[TR4] == 'M' || State[TR4] == 'E') LEDs[Tr4LED] = CRGB(0,0,0);    //when track 4 is muted or empty, turn off it's LED
-
-  if (stopModeUsed) {
+ 
+  if (stopModeUsed && stopMode) {
     for (byte i = 0; i <= 3; i++) {
       if (State[i] == 'M' && PressedInStop[i]) {
-        if (i == TR1) LEDs[Tr1LED] = CRGB(0,255,0);
-        if (i == TR2) LEDs[Tr2LED] = CRGB(0,255,0);
-        if (i == TR3) LEDs[Tr3LED] = CRGB(0,255,0);
-        if (i == TR4) LEDs[Tr4LED] = CRGB(0,255,0);
+        switch (i) {
+          case TR1: 
+            LEDs[Tr1LED] = CRGB(0,200,0);
+            break;
+          case TR2: 
+            LEDs[Tr2LED] = CRGB(0,200,0);
+            break;
+          case TR3:
+            LEDs[Tr3LED] = CRGB(0,200,0);
+            break;
+          case TR4:
+            LEDs[Tr4LED] = CRGB(0,200,0);
+            break;
+          default:
+            break;
+        }
       }
     }
   }
 
+  if (!sleepMode) {
+    if (!playMode) LEDs[modeLED] = CRGB(255,0,0);    //when we are in Record mode, the LED is red
+    else LEDs[modeLED] = CRGB(0,200,0);    //when we are in Play mode, the LED is green
+    if (State[selectedTrack] == 'P') LEDs[selectedTrackLED] = CRGB(0,breatheAnimation(),0);
+    if (State[selectedTrack] == 'R' || State[selectedTrack] == 'O') LEDs[selectedTrackLED] = CRGB(breatheAnimation(),0,0); //when selected track is recording or overdubing, turn on it's LED, colour red
+    else if (State[selectedTrack] == 'E' && !playMode) LEDs[selectedTrackLED] = CRGB(0,0,breatheAnimation());
+  } else LEDs[modeLED] = CRGB(0,0,0);    //when we are in sleep mode
+  
   //the setRingColour variable sets the LED Ring's colour. 0 is red, 60 is yellow(ish), 96 is green.
   if ((State[TR1] == 'R' || State[TR2] == 'R' || State[TR3] == 'R' || State[TR4] == 'R') && firstRecording) setRingColour = 0;    //sets the led ring to red (recording)
   else if ((State[TR1] == 'R' || State[TR2] == 'R' || State[TR3] == 'R' || State[TR4] == 'R') && !firstRecording) setRingColour = 60;    //sets the led ring to yellow (overdubbing)
@@ -300,7 +356,6 @@ void setLEDs(){
 void reset(){    //function to reset the pedal
   sendNote(0x1F);    //sends note that resets Mobius
   selectedTrack = TR1;    //selects the 1rst track
-  muteAllInputsButSelected();
   sendAllVolumes();
   resetSleepMode();
   //empties the tracks:
@@ -315,12 +370,14 @@ void reset(){    //function to reset the pedal
   firstRecording = true;    //sets the variable firstRecording to true
   playMode = false;    //into record mode
   ringPosition = 0;    //resets the ring position
+  x2timesPressed = 1;
+  x2pressed = false;
   startLEDs();    //animation to show the pedal has been reset
   startLEDsDone = false;
 }
 void startLEDs(){    //animation to show the pedal has been reset
   if (millis() - lastLEDsMillis > 150){
-    if (counterLEDs % 2 == 0 && counterLEDs < 6) fill_solid(LEDs, qtyLEDs, CRGB::Red), counterLEDs++;
+    if (counterLEDs % 2 == 0 && counterLEDs < 6) fill_solid(LEDs, qtyLEDs, CRGB(0, 70, 63)), counterLEDs++;
     else if (counterLEDs % 2 != 0 && counterLEDs < 6) FastLED.clear(), counterLEDs++;
     FastLED.show();
     if (counterLEDs == 6) startLEDsDone = true, counterLEDs = 0;
@@ -339,7 +396,7 @@ void ringLEDs(){    //function that makes the spinning animation for the led rin
   }
 }
 void sendAllVolumes(){
-  for (byte i = 0; i <= TR4; i++){
+  for (byte i = 0; i < 4; i++){
     Serial.write(176);    //176 = CC Command
     Serial.write(i);    // Which value: if the selected Track is 1, the value sent will be 1; If it's 2, the value 2 will be sent and so on.
     Serial.write(vol[i]);
@@ -351,22 +408,7 @@ void sendVolume(){
   Serial.write(vol[selectedTrack]);
   EEPROM.write(selectedTrack, vol[selectedTrack]);
 }
-void muteAllInputsButSelected(){
-  byte notMutedInput = 0;
-  if (selectedTrack == TR1) notMutedInput = 5;
-  else if (selectedTrack == TR2) notMutedInput = 6;
-  else if (selectedTrack == TR3) notMutedInput = 7;
-  else if (selectedTrack == TR4) notMutedInput = 8;
-  for (byte i = 5; i <= 8; i++) {
-    if (i != notMutedInput) {
-      Serial.write(176);
-      Serial.write(i);
-      Serial.write(0);
-    }
-  }
-}
 void RecPlay(){
-  muteAllInputsButSelected();
   sendVolume();
   sendNote(0x27);    //send the note
   stopMode = false;
@@ -394,7 +436,16 @@ void RecPlay(){
 }
 void playRecPlay(){
   sendNote(0x31);    //send the note
-  if (stopMode) ringPosition = 0;    //if we are in stop mode, make the ring spin from the position 0
+  if (stopMode) {
+    ringPosition = 0;    //if we are in stop mode, make the ring spin from the position 0
+    if (PressedInStop[selectedTrack]) {
+      fadeValue = maxBrightness;
+      fadeDirection = false;
+    } else {
+      fadeValue = minBrightness;
+      fadeDirection = true;
+    }
+  }
   if (!stopModeUsed) {    //if stop Mode hasn't been used, just play every track that isn't empty: 
     for (byte i = 0; i < 4; i++) {
       if (State[i] != 'E') State[i] = 'P';
@@ -425,31 +476,56 @@ void playRecPlay(){
     }
   }
   stopMode = false;
+  doublePressPlay = true;
 }
 void pressedTrack(byte track){
   if (!playMode) {
     if ((track == firstRecordedTrack) || firstRecordedTrack == 5){
-      selectedTrack = track;    //select the track 1
-      muteAllInputsButSelected();
-      if (track == TR1) sendNote(0x23);    //send the note
-      else if (track == TR2) sendNote(0x24);    //send the note
-      else if (track == TR3) sendNote(0x25);    //send the note
-      else if (track == TR4) sendNote(0x26);    //send the note
+      switch (track) {
+        case TR1:
+          sendNote(0x23);
+          break;
+        case TR2:
+          sendNote(0x24);
+          break;
+        case TR3:
+          sendNote(0x25);
+          break;
+        case TR4:
+          sendNote(0x26);
+          break;
+        default:
+          break;
+      }
+      selectedTrack = track;    //select the track
       stopMode = false;
       if (State[track] == 'P' || State[track] == 'E' || State[track] == 'M'){    //if it's playing, empty or muted, record it
         for (byte i = 0; i < 4; i++){
           if (State[i] == 'R' || State[i] == 'O') State[i] = 'P'; //if another track is being recorded, stop and play it
         }
+        if (State[track] == 'M') fadeValue = minBrightness, fadeDirection = true;
         State[track] = 'R';
       } else if (State[track] == 'R') State[track] = 'P', firstRecording = false;    //if the track is recording, play it
       else if (State[track] == 'O') State[track] = 'P', firstRecording = false;    //if the track is overdubbing, play it
     }
   } else {
     if (State[track] != 'E') {
-      if (track == TR1) sendNote(0x2C);
-      else if (track == TR2) sendNote(0x2D);
-      else if (track == TR3) sendNote(0x2E);
-      else if (track == TR4) sendNote(0x2F);
+      switch (track) {
+        case TR1:
+          sendNote(0x2C);
+          break;
+        case TR2:
+          sendNote(0x2D);
+          break;
+        case TR3:
+          sendNote(0x2E);
+          break;
+        case TR4:
+          sendNote(0x2F);
+          break;
+        default:
+          break;
+      }
       if (stopMode){
         PressedInStop[track] = !PressedInStop[track];    //toggle between the track being pressed in stop mode and not
         selectedTrack = track;    //select the track
@@ -468,6 +544,8 @@ void pressedTrack(byte track){
           else if (State[track] == 'M'){    //else if it is muted, play it
             //reset everything in stopMode:
             State[track] = 'P';
+            fadeValue = minBrightness;
+            fadeDirection = true;
             stopModeUsed = false;
             for (byte i = 0; i < 4; i++) PressedInStop[i] = false;
           }
@@ -478,11 +556,9 @@ void pressedTrack(byte track){
   }
 }
 void recModeStop(){
-  if (canStopTrack()) {
-    if (State[selectedTrack] != 'O' && State[selectedTrack] != 'R' && State[selectedTrack] != 'E'){
-      sendNote(0x28);    //send the note
-      State[selectedTrack] = 'M';
-    }
+  if (State[selectedTrack] != 'E' && !firstRecording){
+    sendNote(0x28);    //send the note
+    State[selectedTrack] = 'M';
   }
 }
 void playModeStop(){
@@ -494,7 +570,17 @@ void playModeStop(){
   stopMode = true;    //make the stopMode variable and mode true
 }
 void undoButton(){
-  if (!playMode && lastPressed != 1 && lastPressed != 11) sendNote(0x22);    //send a note that undoes the last thing it did
+  if (!playMode && !stopMode && lastPressed != 1 && lastPressed != 11 && !doublePressPlay){
+    if (x2timesPressed == 1 && !x2pressed) sendNote(0x22);    //send a note that undoes the last thing it did
+    else if (x2timesPressed != 1) {
+      sendNote(0x21);
+      x2timesPressed = x2timesPressed/2;
+      for (byte i = 0; i < 4; i++){
+        if (State[i] == 'M') State[i] = 'P'; //play a track if it is muted
+        else if (State[i] == 'E') PlayedWRecPlay[i] = "true";
+      }
+    }
+  }
 }
 void modeButton(){
   if (canChangeModeOrClearTrack()){ //if the mode Button is pressed and mode can be changed
@@ -504,6 +590,10 @@ void modeButton(){
     }else{
       sendNote(0x2B);
       playMode = false;    //entering rec mode
+      if (State[selectedTrack] != 'P' && State[selectedTrack] != 'M' && !PressedInStop[selectedTrack]) {
+        fadeValue = minBrightness;
+        fadeDirection = true;
+      }
     }
     //if any of the tracks is recording when pressing the button, play them:
     for (byte i = 0; i < 4; i++){
@@ -524,50 +614,49 @@ bool canChangeModeOrClearTrack(){
 }
 void X2Button(){
   if (!stopModeUsed && !stopMode) {
-    if ((State[selectedTrack] == 'P' || State[selectedTrack] == 'M' || State[selectedTrack] == 'E') && !firstRecording) {
+    if (((State[selectedTrack] == 'P' || State[selectedTrack] == 'M' || State[selectedTrack] == 'E') && !firstRecording) && x2timesPressed < 256) {
+      if (State[selectedTrack] == 'M') fadeValue = minBrightness, fadeDirection = false;
       sendNote(0x20);
+      if (x2timesPressed != 256) LEDs[X2LED] = CRGB(0,0,255);    //turn ON the X2 LED when the button is pressed and the pedal has been used
+      else LEDs[X2LED] = CRGB(255,0,0);
+      x2timesPressed = x2timesPressed*2;
+      x2pressed = true;
       for (byte i = 0; i < 4; i++){
         if (State[i] == 'M') State[i] = 'P'; //play a track if it is muted
         else if (State[i] == 'E') PlayedWRecPlay[i] = "true";
       }
-    }
-  }
+    } else LEDs[X2LED] = CRGB(255,0,0);
+  } else LEDs[X2LED] = CRGB(255,0,0);
 }
 void clearButton(){
-  if (millis() - timeClear > doublePressClearTime){    //debounce
-    if (digitalRead(11) == LOW){
-      if (!doublePressClear){
-        if (canChangeModeOrClearTrack()){    //if we can clear the selected track, do it
-          if (!stopModeUsed && !stopMode) {
-            sendNote(0x1E);
-            doublePressClear = true;    //activate the function that resets everything if we press the Clear button again
-            if (State[selectedTrack] == 'P' || State[selectedTrack] == 'O' || (State[selectedTrack] == 'R' && !firstRecording)) {
-              State[selectedTrack] = 'E';
-              PlayedWRecPlay[selectedTrack] = false;
-              PressedInStop[selectedTrack] = false;
-            }
-          } else doublePressClear = true;
-        } else if (canChangeModeOrClearTrack() && stopMode) doublePressClear = true;
-        else if (!canChangeModeOrClearTrack()) reset();
-        timeClear = millis();
-      } else reset();    //reset everything when Clear is pressed twice
-      resetSleepMode();
-    } 
+  if (canChangeModeOrClearTrack() && !stopModeUsed && !stopMode){    //if we can clear the selected track, do it
+    sendNote(0x1E);
+    if (!firstRecording){
+      if (State[selectedTrack] == 'E') LEDs[clearLED] = CRGB(255,0,0);
+      else if (State[selectedTrack] == 'P' || State[selectedTrack] == 'O' || State[selectedTrack] == 'R') LEDs[clearLED] = CRGB(0,0,255);
+      else if (State[selectedTrack] != 'P' && State[selectedTrack] != 'E') LEDs[clearLED] = CRGB(255,0,0);
+    } else LEDs[clearLED] = CRGB(255,0,0);
+    doublePressClear = true, lastClear = millis();    //activate the function that resets everything if we press the Clear button again
+    if (State[selectedTrack] == 'P' || State[selectedTrack] == 'O' || (State[selectedTrack] == 'R' && !firstRecording)) {
+      State[selectedTrack] = 'E';
+      PlayedWRecPlay[selectedTrack] = false;
+      PressedInStop[selectedTrack] = false;
+    } else doublePressClear = true, lastClear = millis();
+  } else if (canChangeModeOrClearTrack() && stopMode) doublePressClear = true, lastClear = millis(), LEDs[clearLED] = CRGB(255,0,0);
+  else reset(), lastClear = millis(), LEDs[clearLED] = CRGB(255,0,0);
+}
+void resetButton(){
+  if (millis() - lastClear > doublePressClearTime){    //debounce
+    if (digitalRead(11) == LOW && doublePressClear) {
+      reset();    //reset everything when Clear is pressed twice
+    }
   }
 }
 void rotaryEncoder(){
   state = digitalRead(clockPin);
   if (state != lastState){
-    if (digitalRead(dataPin) != state){
-      if (vol[selectedTrack] < 127){
-        vol[selectedTrack]++;
-      }
-    }
-    else {
-      if(vol[selectedTrack] > 0){
-        vol[selectedTrack]--;
-      }
-    }
+    if (digitalRead(dataPin) != state) vol[selectedTrack]++;
+    else vol[selectedTrack]--;
     resetSleepMode();
     sendVolume();
   }
@@ -587,8 +676,24 @@ void nextTrack(){
   sendNote(0x32);
 }
 void resetSleepMode(){
-  if (sleepMode) sleepMode = false;
+  if (sleepMode) {
+    fadeValue = minBrightness, fadeDirection = true;
+    sleepMode = false;
+  } 
   timeSleepMode = millis();
+}
+byte breatheAnimation(){
+  if (millis() - previousBreathe >= 1) {
+    if (fadeDirection) {
+      fadeValue++;
+      if (fadeValue >= maxBrightness) fadeValue = maxBrightness, fadeDirection = false;
+    } else {
+      fadeValue--;
+      if (fadeValue <= minBrightness) fadeValue = minBrightness, fadeDirection = true;
+    }
+    previousBreathe = millis();
+  }
+  return fadeValue;
 }
 bool checkPressedInStop(byte track){
   if (State[track] != 'E') {
